@@ -32,5 +32,5 @@ export function translateAuthError(message: string): string {
   if (m.includes('rate limit') || m.includes('too many')) return 'Demasiados intentos. Espera un momento e inténtalo de nuevo.';
   if (m.includes('network') || m.includes('fetch')) return 'Sin conexión. Comprueba tu red e inténtalo de nuevo.';
   if (m.includes('password')) return 'La contraseña no cumple los requisitos.';
-  return 'Ha ocurrido un error. Inténtalo de nuevo.';
+  return `Ha ocurrido un error (${message}). Inténtalo de nuevo.`;
 }
