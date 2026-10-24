@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { Button, Card, ChipSingle, ErrorText, Screen, Text, TextField } from '../src/components/ui';
 import { WEEKDAY_LONG } from '../src/lib/labels';
 import {
+  blockedByExpoGo,
   loadReminderSettings,
   remindersSupported,
   saveReminderSettings,
@@ -89,7 +90,11 @@ export default function Reminders() {
     return (
       <Screen>
         <Text variant="title">Recordatorios</Text>
-        <Text muted>Los recordatorios se programan en el móvil. Abre Vigor en tu teléfono para configurarlos.</Text>
+        <Text muted>
+          {blockedByExpoGo
+            ? 'Los recordatorios no están disponibles en Expo Go para Android: Expo Go no incluye un módulo que necesita la librería de notificaciones. Funcionarán en la app instalada (build de desarrollo o de producción).'
+            : 'Los recordatorios se programan en el móvil. Abre Vigor en tu teléfono para configurarlos.'}
+        </Text>
         <Button title="Volver" variant="ghost" onPress={() => router.back()} />
       </Screen>
     );

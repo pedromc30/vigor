@@ -1,5 +1,6 @@
-// Adaptador de notificaciones locales (expo-notifications). Se carga bajo demanda: importarlo al
-// arrancar haría que Expo Go avise de que no está soportado del todo aunque no se use.
+// Adaptador de notificaciones locales (expo-notifications). Se carga bajo demanda y nunca en Expo Go
+// para Android, donde la librería no se puede cargar.
+import { isRunningInExpoGo } from 'expo';
 import { Platform } from 'react-native';
 import { listRoutines } from './training';
 import { loadPref, savePref } from './local-prefs';
@@ -15,7 +16,12 @@ import {
 const KEY = 'vigor.reminders.v1';
 const CHANNEL = 'recordatorios';
 
-export const remindersSupported = Platform.OS !== 'web';
+/**
+ * En Expo Go para Android, `expo-notifications` no se puede ni cargar (falta un módulo nativo que Expo Go
+ * retiró con las notificaciones push). Funcionará en una build de desarrollo o de producción.
+ */
+export const blockedByExpoGo = Platform.OS === 'android' && isRunningInExpoGo();
+export const remindersSupported = Platform.OS !== 'web' && !blockedByExpoGo;
 
 export async function loadReminderSettings(): Promise<ReminderSettings> {
   const saved = await loadPref<Partial<ReminderSettings>>(KEY, {});
