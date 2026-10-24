@@ -5,6 +5,7 @@ import { Button, Card, ErrorText, LinkButton, Screen, Text, TextField } from '..
 import { addDays, dayLabel, toISODate } from '../src/lib/diet-math';
 import { METRIC_FIELDS, parseMetricsForm, type MetricKey } from '../src/lib/metrics-form';
 import { deleteMetric, listMetrics, saveMetrics, type BodyMetric } from '../src/lib/progress';
+import { success } from '../src/lib/haptics';
 import { formatKg } from '../src/lib/training-math';
 import { useFocusData } from '../src/lib/use-focus-data';
 import { useAuth } from '../src/providers/AuthProvider';
@@ -46,6 +47,7 @@ export default function Weight() {
       await saveMetrics(session.user.id, date, parsed.values);
       await reload();
       setSaved(true);
+      success();
     } catch {
       setError('No se pudo guardar. Comprueba tu conexión.');
     } finally {

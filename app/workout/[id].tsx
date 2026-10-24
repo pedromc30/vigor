@@ -22,6 +22,7 @@ import {
 } from '../../src/lib/training';
 import { bestEstimated1RM, formatKg, suggestNextWeight, targetsMet } from '../../src/lib/training-math';
 import { parseDecimal } from '../../src/lib/validation';
+import { success, tap } from '../../src/lib/haptics';
 import { useAuth } from '../../src/providers/AuthProvider';
 import { radius, spacing, useTheme } from '../../src/theme';
 
@@ -78,7 +79,7 @@ export default function Workout() {
         const s = await getSession(id);
         if (!s) return setLoadError('No se encontró la sesión.');
         const sets = await getSessionSets(id);
-        const previous = await getPreviousSets([...new Set(s.plan.map((p) => p.exercise_id))], id);
+        const previous = await getPreviousSets([...new Set(s.plan.map((p) => p.exercise_id))], id).catch(() => ({}) as Previous); // sin red puede no haber histórico
         setSession(s);
         setPrev(previous);
         setRows(s.plan.map((p, pos) => buildRows(p, pos, sets, previous[p.exercise_id])));
@@ -133,6 +134,7 @@ export default function Workout() {
         target_reps: item.reps_target,
       });
       patchRow(pos, idx, { dbId: saved.id, busy: false });
+      tap();
       if (item.rest_seconds > 0) setRest({ endsAt: Date.now() + item.rest_seconds * 1000, total: item.rest_seconds });
     } catch {
       patchRow(pos, idx, { busy: false });
@@ -164,7 +166,7 @@ export default function Workout() {
     const plan = [...session.plan, item];
     try {
       await updateSessionPlan(session.id, plan);
-      const known = prev[e.id] ? prev : { ...prev, ...(await getPreviousSets([e.id], session.id)) };
+      const known = prev[e.id] ? prev : { ...prev, ...(await getPreviousSets([e.id], session.id).catch(() => ({}))) };
       setPrev(known);
       setSession({ ...session, plan });
       setRows((all) => [...all, buildRows(item, plan.length - 1, [], known[e.id])]);
@@ -193,6 +195,7 @@ export default function Workout() {
     setFinishing(true);
     try {
       await finishSession(session.id);
+      success();
       router.replace({ pathname: '/session/[id]', params: { id: session.id } });
     } catch {
       setFinishing(false);

@@ -175,6 +175,14 @@ export async function deleteRecipe(id: string) {
 
 /** Quita referencias a alimentos o recetas que ya no existen (p. ej. en favoritas antiguas). */
 async function sanitizeRefs<T extends { food_id: string | null; recipe_id: string | null }>(items: T[]): Promise<T[]> {
+  try {
+    return await sanitizeRefsOnline(items);
+  } catch {
+    return items; // sin conexión no se puede comprobar: se conservan las referencias
+  }
+}
+
+async function sanitizeRefsOnline<T extends { food_id: string | null; recipe_id: string | null }>(items: T[]): Promise<T[]> {
   const foodIds = [...new Set(items.map((i) => i.food_id).filter(Boolean))] as string[];
   const recipeIds = [...new Set(items.map((i) => i.recipe_id).filter(Boolean))] as string[];
   const [foods, recipes] = await Promise.all([

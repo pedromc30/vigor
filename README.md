@@ -8,7 +8,7 @@ App móvil (Expo + React Native + TypeScript, backend Supabase) que combina entr
 - [x] **Fase 2**: entreno (biblioteca, rutinas, sesión en vivo, 1RM/progresión, historial y volumen semanal)
 - [x] **Fase 3**: dieta (diario por comidas, Open Food Facts, escáner, recetas, favoritas, planificador y lista de la compra)
 - [x] **Fase 4**: progreso (peso, perímetros, fotos privadas), gráficas, ajuste semanal, dashboard y recordatorios
-- [ ] Fase 5: offline, exportación CSV, RGPD y pulido
+- [x] **Fase 5**: funcionamiento sin conexión con sincronización, exportación a CSV, RGPD y pulido visual
 
 ## Puesta en marcha
 
@@ -58,3 +58,35 @@ Las versiones de los módulos nativos están fijadas a las que incluye Expo Go p
 - **Cumplimiento:** un día de dieta cuenta como cumplido si las kcal están dentro de ±10 % del objetivo. La adherencia de entreno es sesiones hechas / días de entreno por semana de tu perfil. La *racha* exige además haber entrenado los días con entreno programado.
 - **Ajuste semanal (heurístico, no consejo médico):** con ≥ 4 pesajes en 2 semanas (≥ 10 días entre el primero y el último) y comida registrada ≥ 7 de los últimos 14 días, si la tendencia no va hacia tu objetivo propone ±100-200 kcal (perder: pendiente > −0,1 kg/sem; ganar: < +0,05 kg/sem; mantener: |pendiente| > 0,25 kg/sem; y +100 si pierdes más del 1 % del peso por semana). Solo se aplica si lo aceptas; la proteína y la grasa se mantienen y los carbohidratos absorben el cambio. No vuelve a proponer durante 14 días.
 - **Recordatorios locales** (entreno en los días programados, comidas, agua y pesaje semanal) con `expo-notifications`. Se programan en el dispositivo, nada se envía a un servidor. **No funcionan en Expo Go para Android** (esa versión de Expo Go no incluye un módulo nativo que la librería necesita para cargarse): requieren una build de desarrollo (`eas build --profile development`) o de producción. En Expo Go la pantalla lo explica y la app no falla.
+
+## Sin conexión (Fase 5)
+
+Una capa entre la app y Supabase (`src/lib/offline`) hace lo siguiente:
+
+- **Lecturas:** guarda en el dispositivo la última respuesta de cada consulta (acotada: 150 entradas, 250 KB por entrada) y, sin red, devuelve esa copia.
+- **Escrituras sin red** (entrenos y series, diario de comidas, agua y medidas): se guardan en una cola en el dispositivo, **se ven al instante** en pantalla y se envían **en orden** al volver la conexión (se comprueba al abrir la app, al volver a primer plano y cada 15 s). Los ids se crean en el móvil, así que un reenvío nunca duplica datos. Borrar o editar algo que aún no se había enviado se fusiona en la cola en lugar de enviar peticiones de más.
+- **Conflictos:** gana la última escritura (no hay edición simultánea de los mismos datos). Si el servidor rechaza un cambio de forma definitiva (4xx), se descarta y la app lo avisa.
+- **Sesión:** si abres la app sin red con el token caducado, se recupera la sesión guardada y se usan los datos del dispositivo; al volver la red se renueva sola.
+- **Un aviso flotante** indica «Sin conexión», los cambios pendientes, «Sincronizando…» o los cambios rechazados.
+- **Lo que sigue necesitando conexión:** crear o editar rutinas, recetas, alimentos propios, el planificador, el perfil y los objetivos, las fotos, Open Food Facts, exportar datos y eliminar la cuenta. Las pantallas lo indican con un mensaje.
+- **Al cerrar sesión o eliminar la cuenta** se borran la copia y la cola del dispositivo. Si hay cambios sin enviar al cerrar sesión, la app avisa de que se perderían.
+- Supabase reintenta solo las consultas fallidas; está desactivado (`db: { retry: false }`) porque sin red tardaba ~11 s en dar error.
+
+## Exportar datos (CSV)
+
+Perfil → **Exportar datos (CSV)**: un archivo por tipo (perfil, entrenos, rutinas, diario, agua, medidas, alimentos, recetas, planificador e índice de fotos), en formato *Excel España* (`;` y decimales con coma) o *estándar* (`,` y punto). Lleva BOM UTF-8 y neutraliza los textos que una hoja de cálculo interpretaría como fórmula. Se descarga siempre del servidor (hace falta conexión) tras enviar lo pendiente. Las fotos se guardan una a una desde su pantalla.
+
+## RGPD
+
+- Consentimiento explícito para datos de salud en el onboarding (fecha y versión guardadas); se muestra en **Perfil → Privacidad y datos**.
+- Derechos: acceso/portabilidad (CSV), rectificación (editar perfil), supresión (eliminar cuenta: borra primero los archivos de fotos del Storage y después la cuenta; el resto se elimina en cascada).
+- RLS en todas las tablas y bucket privado con URL firmadas.
+
+## Antes de publicar la app
+
+Esto no está hecho y es responsabilidad de quien publique:
+
+1. Indicar el responsable del tratamiento en `.env` (`EXPO_PUBLIC_LEGAL_NAME`, `EXPO_PUBLIC_LEGAL_EMAIL`). **Los textos de privacidad son orientativos: hay que revisarlos con un profesional** (política de privacidad, términos, edad mínima, registro de actividades de tratamiento, contrato de encargado con Supabase).
+2. Supabase: configurar un SMTP propio, plantillas y URL de redirección del correo de confirmación, recuperación de contraseña, y revisar la región de los datos.
+3. Compilar con EAS (`eas build`): los **recordatorios no funcionan en Expo Go para Android**, y las tiendas exigen una URL de política de privacidad.
+4. Los datos guardados en el dispositivo para el modo sin conexión no se cifran de forma adicional (los protege el sistema del móvil).

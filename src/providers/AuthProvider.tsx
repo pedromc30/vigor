@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { isSupabaseConfigured, supabase } from '../lib/supabase';
+import { removeStoredSession, restoreStoredSession } from '../lib/offline/session';
+import { isSupabaseConfigured, offline, supabase } from '../lib/supabase';
 import { fetchProfile, upsertProfile, type Profile, type ProfileUpdate } from '../lib/profile';
 
 interface AuthContextValue {
@@ -28,10 +29,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setSessionReady(true);
-    });
+    supabase.auth
+      .getSession()
+      .then(async ({ data }) => data.session ?? (await restoreStoredSession())) // sin red y con el token caducado
+      .catch(() => restoreStoredSession())
+      .then((s) => {
+        setSession(s);
+        setSessionReady(true);
+      });
     const { data } = supabase.auth.onAuthStateChange((_event, next) => setSession(next));
     return () => data.subscription.unsubscribe();
   }, []);
@@ -48,6 +53,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoadedFor(id);
     }
   }, []);
+
+  useEffect(() => {
+    if (userId) void offline.adoptUser(userId); // datos locales de otra cuenta se descartan
+  }, [userId]);
 
   useEffect(() => {
     if (!userId) {
@@ -74,7 +83,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut({ scope: 'local' });
+    if (error) {
+      // Sin red supabase-js no cierra la sesión: se borra la copia local y se cierra igualmente.
+      await removeStoredSession();
+      setSession(null);
+    }
+    await offline.clearAll(); // la caché y la cola contienen datos de salud de esta cuenta
   }, []);
 
   const value = useMemo<AuthContextValue>(

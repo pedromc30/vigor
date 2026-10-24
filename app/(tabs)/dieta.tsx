@@ -17,6 +17,7 @@ import {
   toISODate,
   type Meal,
 } from '../../src/lib/diet-math';
+import { tap } from '../../src/lib/haptics';
 import { formatKg } from '../../src/lib/training-math';
 import { useFocusData } from '../../src/lib/use-focus-data';
 import { useAuth } from '../../src/providers/AuthProvider';
@@ -87,6 +88,7 @@ export default function Dieta() {
   const drink = (ml: number) =>
     run(async () => {
       if (session) await addWater(session.user.id, date, ml);
+      tap();
     }, 'No se pudo registrar el agua. Comprueba tu conexión.');
 
   return (

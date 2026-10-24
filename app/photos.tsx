@@ -7,6 +7,7 @@ import { base64ToBytes } from '../src/lib/base64';
 import { dayLabel, toISODate } from '../src/lib/diet-math';
 import { deletePhoto, listPhotos, signedUrls, uploadPhoto, type ProgressPhoto } from '../src/lib/progress';
 import { confirm } from '../src/lib/confirm';
+import { shareRemoteImage } from '../src/lib/export';
 import { useFocusData } from '../src/lib/use-focus-data';
 import { useAuth } from '../src/providers/AuthProvider';
 import { spacing, useTheme } from '../src/theme';
@@ -48,6 +49,16 @@ export default function Photos() {
       setError('No se pudo subir la foto. Comprueba tu conexión (máximo 5 MB por foto).');
     } finally {
       setBusy(false);
+    }
+  };
+
+  const save = async (p: ProgressPhoto) => {
+    const url = urls[p.storage_path];
+    if (!url) return;
+    try {
+      await shareRemoteImage(url, `vigor-foto-${p.taken_on}.jpg`);
+    } catch {
+      setError('No se pudo guardar la foto en este dispositivo.');
     }
   };
 
@@ -107,6 +118,7 @@ export default function Photos() {
             <Image source={{ uri: urls[open.storage_path] }} style={{ flex: 1 }} resizeMode="contain" />
           ) : null}
           <Text style={{ color: '#fff', textAlign: 'center' }}>{open ? dayLabel(open.taken_on, today) : ''}</Text>
+          {open ? <Button title="Guardar / compartir" onPress={() => void save(open)} /> : null}
           <Button title="Cerrar" variant="secondary" onPress={() => setOpen(null)} />
           {open ? <Button title="Eliminar foto" variant="danger" onPress={() => void remove(open)} /> : null}
         </View>

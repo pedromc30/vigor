@@ -5,6 +5,7 @@ import { MacroRow } from '../../src/components/plan-summary';
 import { Button, Card, ErrorText, Screen, Text } from '../../src/components/ui';
 import { addWater, getLogs, getWaterMl } from '../../src/lib/diet';
 import { addDays, formatMl, isoWeekday, sumMacros, toISODate, type Meal } from '../../src/lib/diet-math';
+import { tap } from '../../src/lib/haptics';
 import { getKcalRows, getSessionDates } from '../../src/lib/progress';
 import { computeStreak, kcalByDay } from '../../src/lib/progress-math';
 import { getActiveSession, getRoutine, listRoutines, planForDay, startSession } from '../../src/lib/training';
@@ -83,6 +84,7 @@ export default function Inicio() {
     if (!session) return;
     try {
       await addWater(session.user.id, today, 250);
+      tap();
       await reload();
     } catch {
       setActionError('No se pudo registrar el agua.');

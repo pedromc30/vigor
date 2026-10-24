@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/providers/AuthProvider';
-import { confirm } from '../../src/lib/confirm';
-import { deleteAccount } from '../../src/lib/profile';
+import { runDeleteAccount } from '../../src/lib/account';
+import { confirmSignOut } from '../../src/lib/offline/session';
 import { ACTIVITY_LABELS, DIET_LABELS, GOAL_LABELS, SEX_LABELS, ALLERGEN_OPTIONS } from '../../src/lib/labels';
 import { MacroRow } from '../../src/components/plan-summary';
 import { Button, Card, Disclaimer, ErrorText, Screen, Text } from '../../src/components/ui';
@@ -27,22 +27,11 @@ export default function Perfil() {
   const allergyNames = profile.allergies.map((a) => ALLERGEN_OPTIONS.find((o) => o.key === a)?.label ?? a);
 
   const confirmDelete = async () => {
-    const ok = await confirm(
-      'Eliminar cuenta',
-      'Se borrarán de forma permanente tu cuenta y todos tus datos. Esta acción no se puede deshacer.',
-      'Eliminar todo',
-      true,
-    );
-    if (!ok) return;
     setDeleting(true);
     setError(null);
-    try {
-      await deleteAccount();
-      await signOut();
-    } catch {
-      setError('No se pudo eliminar la cuenta. Comprueba tu conexión e inténtalo de nuevo.');
-      setDeleting(false);
-    }
+    const msg = await runDeleteAccount(signOut);
+    if (msg) setError(msg);
+    setDeleting(false);
   };
 
   return (
@@ -79,11 +68,13 @@ export default function Perfil() {
       </Card>
 
       <Button title="Recordatorios" variant="secondary" onPress={() => router.push('/reminders')} />
+      <Button title="Exportar datos (CSV)" variant="secondary" onPress={() => router.push('/export')} />
+      <Button title="Privacidad y datos" variant="secondary" onPress={() => router.push('/privacy')} />
 
       <Disclaimer />
 
       <ErrorText>{error}</ErrorText>
-      <Button title="Cerrar sesión" variant="secondary" onPress={() => void signOut()} />
+      <Button title="Cerrar sesión" variant="secondary" onPress={() => void confirmSignOut().then((ok) => { if (ok) void signOut(); })} />
       <Button title="Eliminar cuenta y todos mis datos" variant="danger" onPress={() => void confirmDelete()} loading={deleting} />
     </Screen>
   );

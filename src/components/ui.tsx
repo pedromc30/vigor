@@ -47,7 +47,15 @@ export function Screen({
 }) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const content = { padding: spacing.lg, paddingTop: padTop ? insets.top + spacing.lg : spacing.lg, gap: spacing.lg };
+  // En pantallas anchas (tablet, web) el contenido no se estira: queda centrado con un ancho máximo.
+  const content = {
+    padding: spacing.lg,
+    paddingTop: padTop ? insets.top + spacing.lg : spacing.lg,
+    gap: spacing.lg,
+    width: '100%' as const,
+    maxWidth: 640,
+    alignSelf: 'center' as const,
+  };
   return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: colors.background }}

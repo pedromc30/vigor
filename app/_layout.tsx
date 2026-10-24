@@ -4,14 +4,18 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '../src/providers/AuthProvider';
+import { SyncBanner } from '../src/components/sync-banner';
 import { syncReminders } from '../src/lib/notifications';
-import { isSupabaseConfigured } from '../src/lib/supabase';
+import { isSupabaseConfigured, offline } from '../src/lib/supabase';
 import { Button, Screen, Text } from '../src/components/ui';
 import { useTheme } from '../src/theme';
 
 function RootStack() {
   const { colors } = useTheme();
   const { loading, session, onboarded, profileError, refreshProfile, signOut } = useAuth();
+
+  // Reenvía los cambios hechos sin conexión cuando vuelve la red.
+  useEffect(() => offline.startSync(), []);
 
   // Reprograma los recordatorios (si los hay activados) al entrar con la cuenta.
   useEffect(() => {
@@ -65,6 +69,8 @@ function RootStack() {
         <Stack.Screen name="weight" />
         <Stack.Screen name="photos" />
         <Stack.Screen name="reminders" />
+        <Stack.Screen name="export" />
+        <Stack.Screen name="privacy" />
       </Stack.Protected>
     </Stack>
   );
@@ -92,6 +98,7 @@ export default function RootLayout() {
       <AuthProvider>
         <StatusBar style={isDark ? 'light' : 'dark'} />
         <RootStack />
+        <SyncBanner />
       </AuthProvider>
     </SafeAreaProvider>
   );

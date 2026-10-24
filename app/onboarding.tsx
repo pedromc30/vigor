@@ -86,7 +86,7 @@ export default function Onboarding() {
           <Text>
             Para calcular tus objetivos necesitamos datos de salud (peso, altura, edad, alergias…). Los usamos solo para
             ofrecerte la app, se transmiten por conexión cifrada, solo tú puedes acceder a ellos y puedes borrarlos junto
-            con tu cuenta en cualquier momento desde Perfil.
+            con tu cuenta en cualquier momento desde Perfil, donde también tienes el detalle en «Privacidad y datos».
           </Text>
           <Disclaimer />
           <Pressable

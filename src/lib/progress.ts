@@ -10,7 +10,7 @@ function check<T>(res: { data: T | null; error: { message: string } | null }): T
 }
 
 /** Lee todas las filas de una consulta paginando de 1000 en 1000 (la API corta en 1000 por defecto). */
-async function selectAll<T>(page: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>): Promise<T[]> {
+export async function selectAll<T>(page: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>): Promise<T[]> {
   const out: T[] = [];
   for (let from = 0; ; from += PAGE) {
     const rows = check(await page(from, from + PAGE - 1)) ?? [];
