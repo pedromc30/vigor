@@ -15,6 +15,7 @@ export default function EditTargets() {
   const [protein, setProtein] = useState(str(profile?.target_protein_g ?? null));
   const [fat, setFat] = useState(str(profile?.target_fat_g ?? null));
   const [carbs, setCarbs] = useState(str(profile?.target_carbs_g ?? null));
+  const [water, setWater] = useState(str(profile?.water_goal_ml ?? 2500));
   const [errors, setErrors] = useState<Record<string, string | null>>({});
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -33,6 +34,7 @@ export default function EditTargets() {
       protein: rangeError(int(protein), 0, 1000, 'g'),
       fat: rangeError(int(fat), 0, 1000, 'g'),
       carbs: rangeError(int(carbs), 0, 2000, 'g'),
+      water: rangeError(int(water), 500, 10000, 'ml'),
     };
     setErrors(e);
     if (Object.values(e).some(Boolean)) return;
@@ -41,6 +43,7 @@ export default function EditTargets() {
       target_protein_g: int(protein)!,
       target_fat_g: int(fat)!,
       target_carbs_g: int(carbs)!,
+      water_goal_ml: int(water)!,
       targets_manual: true,
     });
   };
@@ -77,6 +80,7 @@ export default function EditTargets() {
       <TextField label="Proteína" suffix="g" keyboardType="number-pad" value={protein} onChangeText={setProtein} error={errors.protein} />
       <TextField label="Carbohidratos" suffix="g" keyboardType="number-pad" value={carbs} onChangeText={setCarbs} error={errors.carbs} />
       <TextField label="Grasa" suffix="g" keyboardType="number-pad" value={fat} onChangeText={setFat} error={errors.fat} />
+      <TextField label="Agua" suffix="ml" keyboardType="number-pad" value={water} onChangeText={setWater} error={errors.water} />
       <Card>
         <Text variant="label">Los macros suman {Math.round(macroKcal)} kcal</Text>
         {diff != null && Math.abs(diff) > 50 ? (

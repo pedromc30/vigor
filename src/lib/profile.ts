@@ -21,6 +21,7 @@ export interface Profile {
   target_fat_g: number | null;
   target_carbs_g: number | null;
   targets_manual: boolean;
+  water_goal_ml: number;
   health_consent_at: string | null;
   consent_version: string | null;
   onboarding_completed_at: string | null;

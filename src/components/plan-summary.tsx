@@ -15,7 +15,7 @@ export function MacroRow({ proteinG, fatG, carbsG }: { proteinG: number; fatG: n
       {items.map((i) => (
         <View key={i.label} style={{ flex: 1, gap: 2 }}>
           <Text variant="heading" style={{ color: i.color }}>
-            {i.value} g
+            {String(i.value).replace('.', ',')} g
           </Text>
           <Text variant="caption" muted>
             {i.label}

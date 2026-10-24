@@ -50,6 +50,11 @@ function RootStack() {
         <Stack.Screen name="routine-edit" />
         <Stack.Screen name="workout/[id]" options={{ gestureEnabled: false }} />
         <Stack.Screen name="session/[id]" />
+        <Stack.Screen name="food-add" />
+        <Stack.Screen name="food-create" />
+        <Stack.Screen name="recipe-edit" />
+        <Stack.Screen name="plan" />
+        <Stack.Screen name="shopping" />
       </Stack.Protected>
     </Stack>
   );
