@@ -54,7 +54,7 @@ export default function EditProfile() {
   };
 
   return (
-    <Screen padTop={false}>
+    <Screen>
       <Text variant="title">Editar datos</Text>
       <BodySection draft={draft} set={set} errors={errors} />
       <GoalSection draft={draft} set={set} errors={errors} />

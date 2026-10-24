@@ -71,7 +71,7 @@ export default function EditTargets() {
   };
 
   return (
-    <Screen padTop={false}>
+    <Screen>
       <Text variant="title">Objetivos diarios</Text>
       <TextField label="Calorías" suffix="kcal" keyboardType="number-pad" value={kcal} onChangeText={setKcal} error={errors.kcal} />
       <TextField label="Proteína" suffix="g" keyboardType="number-pad" value={protein} onChangeText={setProtein} error={errors.protein} />

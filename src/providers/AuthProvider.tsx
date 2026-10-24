@@ -23,7 +23,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [sessionReady, setSessionReady] = useState(!isSupabaseConfigured);
-  const [profileReady, setProfileReady] = useState(true);
+  // Usuario cuyo perfil ya se ha intentado cargar; evita un instante «con sesión pero sin perfil».
+  const [loadedFor, setLoadedFor] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
@@ -44,7 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       setProfileError('No se pudo cargar tu perfil. Comprueba tu conexión.');
     } finally {
-      setProfileReady(true);
+      setLoadedFor(id);
     }
   }, []);
 
@@ -52,10 +53,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!userId) {
       setProfile(null);
       setProfileError(null);
-      setProfileReady(true);
+      setLoadedFor(null);
       return;
     }
-    setProfileReady(false);
     void load(userId);
   }, [userId, load]);
 
@@ -79,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<AuthContextValue>(
     () => ({
-      loading: !sessionReady || (!!session && !profileReady),
+      loading: !sessionReady || (!!userId && loadedFor !== userId),
       session,
       profile,
       profileError,
@@ -88,7 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       saveProfile,
       signOut,
     }),
-    [sessionReady, profileReady, session, profile, profileError, refreshProfile, saveProfile, signOut],
+    [sessionReady, userId, loadedFor, session, profile, profileError, refreshProfile, saveProfile, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

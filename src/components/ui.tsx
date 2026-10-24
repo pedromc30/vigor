@@ -145,6 +145,7 @@ export function TextField({
           {...rest}
           style={{
             flex: 1,
+            minWidth: 0,
             minHeight: 50,
             borderRadius: radius.md,
             borderWidth: 1,
@@ -335,5 +336,77 @@ export function ErrorText({ children }: { children: ReactNode }) {
     <Text variant="caption" style={{ color: colors.danger }} accessibilityRole="alert">
       {children}
     </Text>
+  );
+}
+
+/** Filtro de selección única en chips; `allLabel` añade una opción «todos» con valor null. */
+export function ChipSingle<T extends string>({
+  options,
+  value,
+  onChange,
+  allLabel,
+}: {
+  options: { key: T; label: string }[];
+  value: T | null;
+  onChange: (v: T | null) => void;
+  allLabel?: string;
+}) {
+  const { colors } = useTheme();
+  const items: { key: T | null; label: string }[] = allLabel ? [{ key: null, label: allLabel }, ...options] : options;
+  return (
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }} accessibilityRole="radiogroup">
+      {items.map((o) => {
+        const on = o.key === value;
+        return (
+          <Pressable
+            key={String(o.key)}
+            accessibilityRole="radio"
+            accessibilityState={{ selected: on }}
+            onPress={() => onChange(o.key)}
+            style={{
+              paddingHorizontal: spacing.md,
+              minHeight: 36,
+              justifyContent: 'center',
+              borderRadius: 999,
+              backgroundColor: on ? colors.primary : colors.surface,
+              borderWidth: 1,
+              borderColor: on ? colors.primary : colors.border,
+            }}
+          >
+            <Text variant="caption" style={{ color: on ? colors.onPrimary : colors.text, fontWeight: '600' }}>
+              {o.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+/** Botón pequeño de texto para acciones secundarias dentro de tarjetas. */
+export function LinkButton({
+  title,
+  onPress,
+  danger,
+  disabled,
+}: {
+  title: string;
+  onPress: () => void;
+  danger?: boolean;
+  disabled?: boolean;
+}) {
+  const { colors } = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      disabled={disabled}
+      hitSlop={8}
+      style={{ minHeight: 36, justifyContent: 'center', opacity: disabled ? 0.5 : 1 }}
+    >
+      <Text variant="label" style={{ color: danger ? colors.danger : colors.primary }}>
+        {title}
+      </Text>
+    </Pressable>
   );
 }

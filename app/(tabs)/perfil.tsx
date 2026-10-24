@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/providers/AuthProvider';
+import { confirm } from '../../src/lib/confirm';
 import { deleteAccount } from '../../src/lib/profile';
 import { ACTIVITY_LABELS, DIET_LABELS, GOAL_LABELS, SEX_LABELS, ALLERGEN_OPTIONS } from '../../src/lib/labels';
 import { MacroRow } from '../../src/components/plan-summary';
@@ -26,29 +26,24 @@ export default function Perfil() {
 
   const allergyNames = profile.allergies.map((a) => ALLERGEN_OPTIONS.find((o) => o.key === a)?.label ?? a);
 
-  const confirmDelete = () =>
-    Alert.alert(
+  const confirmDelete = async () => {
+    const ok = await confirm(
       'Eliminar cuenta',
       'Se borrarán de forma permanente tu cuenta y todos tus datos. Esta acción no se puede deshacer.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar todo',
-          style: 'destructive',
-          onPress: async () => {
-            setDeleting(true);
-            setError(null);
-            try {
-              await deleteAccount();
-              await signOut();
-            } catch {
-              setError('No se pudo eliminar la cuenta. Comprueba tu conexión e inténtalo de nuevo.');
-              setDeleting(false);
-            }
-          },
-        },
-      ],
+      'Eliminar todo',
+      true,
     );
+    if (!ok) return;
+    setDeleting(true);
+    setError(null);
+    try {
+      await deleteAccount();
+      await signOut();
+    } catch {
+      setError('No se pudo eliminar la cuenta. Comprueba tu conexión e inténtalo de nuevo.');
+      setDeleting(false);
+    }
+  };
 
   return (
     <Screen>
@@ -87,7 +82,7 @@ export default function Perfil() {
 
       <ErrorText>{error}</ErrorText>
       <Button title="Cerrar sesión" variant="secondary" onPress={() => void signOut()} />
-      <Button title="Eliminar cuenta y todos mis datos" variant="danger" onPress={confirmDelete} loading={deleting} />
+      <Button title="Eliminar cuenta y todos mis datos" variant="danger" onPress={() => void confirmDelete()} loading={deleting} />
     </Screen>
   );
 }

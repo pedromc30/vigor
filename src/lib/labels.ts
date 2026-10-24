@@ -43,3 +43,58 @@ export const ALLERGEN_OPTIONS: { key: string; label: string }[] = [
 ];
 
 export const TRAINING_DAYS = [0, 1, 2, 3, 4, 5, 6, 7];
+
+export const MUSCLE_GROUPS = [
+  'pecho',
+  'espalda',
+  'hombros',
+  'biceps',
+  'triceps',
+  'antebrazos',
+  'cuadriceps',
+  'isquiotibiales',
+  'gluteos',
+  'gemelos',
+  'core',
+] as const;
+export type MuscleGroup = (typeof MUSCLE_GROUPS)[number];
+
+export const MUSCLE_LABELS: Record<MuscleGroup, string> = {
+  pecho: 'Pecho',
+  espalda: 'Espalda',
+  hombros: 'Hombros',
+  biceps: 'Bíceps',
+  triceps: 'Tríceps',
+  antebrazos: 'Antebrazos',
+  cuadriceps: 'Cuádriceps',
+  isquiotibiales: 'Isquiotibiales',
+  gluteos: 'Glúteos',
+  gemelos: 'Gemelos',
+  core: 'Core',
+};
+
+export const EQUIPMENT = ['barra', 'mancuernas', 'maquina', 'polea', 'peso_corporal', 'kettlebell', 'banda', 'otro'] as const;
+export type Equipment = (typeof EQUIPMENT)[number];
+
+export const EQUIPMENT_LABELS: Record<Equipment, string> = {
+  barra: 'Barra',
+  mancuernas: 'Mancuernas',
+  maquina: 'Máquina',
+  polea: 'Polea',
+  peso_corporal: 'Peso corporal',
+  kettlebell: 'Kettlebell',
+  banda: 'Banda elástica',
+  otro: 'Otro',
+};
+
+/** Día de la semana ISO (1 = lunes … 7 = domingo); 0 = sin día fijo. */
+export const WEEKDAY_SHORT: Record<number, string> = { 1: 'L', 2: 'M', 3: 'X', 4: 'J', 5: 'V', 6: 'S', 7: 'D' };
+export const WEEKDAY_LONG: Record<number, string> = {
+  1: 'lunes',
+  2: 'martes',
+  3: 'miércoles',
+  4: 'jueves',
+  5: 'viernes',
+  6: 'sábado',
+  7: 'domingo',
+};
