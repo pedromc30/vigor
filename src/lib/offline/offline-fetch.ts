@@ -21,6 +21,15 @@ export interface OfflineDeps {
   timeoutMs?: number;
 }
 
+/** Columna con la hora de creación que, sin red, debe fijar el móvil. */
+const STAMP_COLUMN: Record<string, string> = {
+  workout_sessions: 'started_at',
+  workout_sets: 'created_at',
+  meal_logs: 'created_at',
+  water_logs: 'created_at',
+  body_metrics: 'created_at',
+};
+
 const JSON_HEADERS = { 'content-type': 'application/json' };
 
 export class NetworkError extends Error {}
@@ -127,8 +136,10 @@ export function createOfflineFetch(deps: OfflineDeps): typeof fetch {
     const { table, params, path } = parsed;
     let body = typeof init.body === 'string' ? init.body : null;
     let rows: Row[] = [];
+    let isList = true;
     if (method === 'POST' && body) {
       const raw = JSON.parse(body) as Row | Row[];
+      isList = Array.isArray(raw);
       rows = (Array.isArray(raw) ? raw : [raw]).map((r) => (r.id ? r : { ...r, id: newId() })); // ids propios: reenviar es seguro
       body = JSON.stringify(Array.isArray(raw) ? rows : rows[0]);
     }
@@ -146,6 +157,17 @@ export function createOfflineFetch(deps: OfflineDeps): typeof fetch {
       } catch (e) {
         if (!isNetworkError(e)) throw e;
         markOffline();
+      }
+    }
+
+    // La hora real de la acción se fija aquí: si la pusiera el servidor al sincronizar, `started_at` quedaría
+    // posterior a un `finished_at` guardado sin red y la base de datos rechazaría la sesión.
+    if (method === 'POST' && body) {
+      const stamp = STAMP_COLUMN[table];
+      if (stamp) {
+        const nowIso = new Date(now()).toISOString();
+        rows = rows.map((r) => (r[stamp] == null ? { ...r, [stamp]: nowIso } : r));
+        body = JSON.stringify(isList ? rows : rows[0]);
       }
     }
 

@@ -197,6 +197,8 @@ describe('escrituras sin conexión', () => {
     await t.flush();
     expect(t.server.tables.workout_sessions).toHaveLength(1);
     expect(t.server.tables.workout_sessions[0]).toMatchObject({ id: row.id, finished_at: '2026-10-24T11:00:00Z' });
+    // la hora de inicio la fija el móvil al crear (no el servidor al sincronizar), o `finished_at >= started_at` fallaría
+    expect(t.server.tables.workout_sessions[0].started_at).toBe(row.started_at);
     expect(t.server.log.filter((l) => l.method === 'POST')).toHaveLength(1); // una sola petición
   });
 
