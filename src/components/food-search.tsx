@@ -13,12 +13,12 @@ export type FoodChoice = { kind: 'food'; food: Food } | { kind: 'off'; off: OffF
 
 const normalize = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
-const offMessage = (e: unknown) =>
-  e instanceof OffError && e.kind === 'rate_limit'
-    ? 'Open Food Facts limita las consultas. Espera un minuto e inténtalo de nuevo.'
-    : e instanceof OffError && e.kind === 'network'
-      ? 'Sin conexión con Open Food Facts. Comprueba tu red.'
-      : 'Open Food Facts no responde ahora mismo. Inténtalo más tarde.';
+const offMessage = (e: unknown) => {
+  const kind = e instanceof OffError ? e.kind : 'server';
+  if (kind === 'rate_limit') return 'Open Food Facts limita las consultas. Espera un minuto e inténtalo de nuevo.';
+  if (kind === 'network') return 'Sin conexión con Open Food Facts. Comprueba tu red.';
+  return 'Open Food Facts no responde ahora mismo (su buscador por texto falla a veces). Prueba con el código de barras, inténtalo más tarde o crea el alimento tú.';
+};
 
 /**
  * Buscador de alimentos: los propios (creados o ya guardados) y Open Food Facts, por texto o código de barras.
