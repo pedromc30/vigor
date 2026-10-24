@@ -165,12 +165,14 @@ export interface Failure {
   table: string;
   method: string;
   status: number;
+  /** Mensaje que devolvió el servidor, para saber por qué rechazó el cambio. */
+  detail?: string;
   at: number;
 }
 
 export interface FlushDeps {
   /** Envía una petición. Lanza si no hay red. */
-  send(req: QueuedRequest): Promise<{ status: number }>;
+  send(req: QueuedRequest): Promise<{ status: number; detail?: string }>;
   currentUserId(): string | null;
   maxAttempts?: number;
 }
@@ -196,8 +198,9 @@ export async function flushQueue(queue: OfflineQueue, deps: FlushDeps): Promise<
       return result;
     }
     let status: number;
+    let detail: string | undefined;
     try {
-      ({ status } = await deps.send(item));
+      ({ status, detail } = await deps.send(item));
     } catch {
       result.stopped = 'offline';
       return result;
@@ -218,7 +221,7 @@ export async function flushQueue(queue: OfflineQueue, deps: FlushDeps): Promise<
         return result;
       }
     } else {
-      result.failures.push({ seq: item.seq, table: item.table, method: item.method, status, at: Date.now() });
+      result.failures.push({ seq: item.seq, table: item.table, method: item.method, status, detail, at: Date.now() });
       await queue.remove(item.seq);
     }
   }

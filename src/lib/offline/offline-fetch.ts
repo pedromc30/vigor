@@ -208,14 +208,26 @@ export function createFlusher(deps: OfflineDeps) {
   let running: Promise<FlushResult | null> | null = null;
   const timeoutMs = deps.timeoutMs ?? 12000;
 
-  const send = async (req: QueuedRequest): Promise<{ status: number }> => {
+  const send = async (req: QueuedRequest): Promise<{ status: number; detail?: string }> => {
     const { token } = await deps.getAuth();
     const headers: Record<string, string> = { ...req.headers, apikey: req.headers.apikey ?? deps.apiKey, authorization: `Bearer ${token ?? deps.apiKey}` };
     const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
     const timer = setTimeout(() => ctrl?.abort(), timeoutMs);
     try {
       const res = await deps.baseFetch(deps.origin + req.path, { method: req.method, headers, body: req.body ?? undefined, signal: ctrl?.signal });
-      return { status: res.status };
+      if (res.ok || res.status >= 500) return { status: res.status };
+      const detail = await res
+        .text()
+        .then((t) => {
+          try {
+            const j = JSON.parse(t) as { message?: string; code?: string };
+            return [j.code, j.message].filter(Boolean).join(' ') || t;
+          } catch {
+            return t;
+          }
+        })
+        .catch(() => '');
+      return { status: res.status, detail: detail.slice(0, 200) };
     } finally {
       clearTimeout(timer);
     }

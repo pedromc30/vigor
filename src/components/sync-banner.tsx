@@ -28,6 +28,8 @@ export function SyncBanner() {
   let tone: 'info' | 'warn' | 'error' | 'ok' = 'info';
   if (failures.length) {
     text = `${failures.length} cambio${failures.length === 1 ? '' : 's'} no se pudo${failures.length === 1 ? '' : 'ieron'} sincronizar (el servidor los rechazó).`;
+    const first = failures[0];
+    if (first) text += ` ${first.table} ${first.method} ${first.status}${first.detail ? `: ${first.detail}` : ''}`;
     tone = 'error';
   } else if (!online) {
     text = pending > 0 ? `Sin conexión · ${pending} cambio${pending === 1 ? '' : 's'} se enviará${pending === 1 ? '' : 'n'} al volver la red` : 'Sin conexión · usando los datos guardados';
