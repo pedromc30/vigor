@@ -15,6 +15,8 @@ export interface Colors {
   protein: string;
   carbs: string;
   fat: string;
+  chart1: string;
+  chart2: string;
 }
 
 const light: Colors = {
@@ -32,6 +34,8 @@ const light: Colors = {
   protein: '#2563EB',
   carbs: '#D97706',
   fat: '#9333EA',
+  chart1: '#2a78d6',
+  chart2: '#eb6834',
 };
 
 const dark: Colors = {
@@ -49,6 +53,8 @@ const dark: Colors = {
   protein: '#60A5FA',
   carbs: '#FBBF24',
   fat: '#C084FC',
+  chart1: '#3987e5',
+  chart2: '#d95926',
 };
 
 export function useTheme(): { colors: Colors; isDark: boolean } {

@@ -5,6 +5,7 @@ import { ExercisePicker } from '../src/components/exercise-picker';
 import { Button, Card, ChipSingle, ErrorText, LinkButton, Screen, Text, TextField } from '../src/components/ui';
 import { WEEKDAY_LONG } from '../src/lib/labels';
 import { draftToInput, validateDraft, type DraftDay, type DraftItem, type RoutineDraft } from '../src/lib/routine-draft';
+import { syncReminders } from '../src/lib/notifications';
 import { getRoutine, saveRoutine, type Exercise } from '../src/lib/training';
 import { spacing } from '../src/theme';
 
@@ -112,6 +113,7 @@ export default function RoutineEdit() {
     setError(null);
     try {
       const savedId = await saveRoutine(draftToInput(draft));
+      void syncReminders().catch(() => {}); // los avisos de entreno dependen de los días de tus rutinas
       // Editando: se vuelve a la vista de la rutina (que se recarga al enfocar); nueva: se sustituye el editor.
       if (draft.id) router.back();
       else router.replace({ pathname: '/routine/[id]', params: { id: savedId } });

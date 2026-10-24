@@ -28,6 +28,15 @@
     "plugins": [
       "expo-router",
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "Vigor accede a tus fotos solo cuando eliges una para tu progreso.",
+          "cameraPermission": "Vigor usa la cámara para hacer tus fotos de progreso y escanear códigos de barras.",
+          "microphonePermission": false
+        }
+      ],
+      "expo-notifications",
+      [
         "expo-camera",
         {
           "cameraPermission": "Vigor usa la cámara solo para escanear códigos de barras de alimentos.",

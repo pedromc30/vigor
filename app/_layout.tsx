@@ -1,8 +1,10 @@
+import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '../src/providers/AuthProvider';
+import { syncReminders } from '../src/lib/notifications';
 import { isSupabaseConfigured } from '../src/lib/supabase';
 import { Button, Screen, Text } from '../src/components/ui';
 import { useTheme } from '../src/theme';
@@ -10,6 +12,11 @@ import { useTheme } from '../src/theme';
 function RootStack() {
   const { colors } = useTheme();
   const { loading, session, onboarded, profileError, refreshProfile, signOut } = useAuth();
+
+  // Reprograma los recordatorios (si los hay activados) al entrar con la cuenta.
+  useEffect(() => {
+    if (session && onboarded) void syncReminders().catch(() => {});
+  }, [session, onboarded]);
 
   if (loading) {
     return (
@@ -55,6 +62,9 @@ function RootStack() {
         <Stack.Screen name="recipe-edit" />
         <Stack.Screen name="plan" />
         <Stack.Screen name="shopping" />
+        <Stack.Screen name="weight" />
+        <Stack.Screen name="photos" />
+        <Stack.Screen name="reminders" />
       </Stack.Protected>
     </Stack>
   );

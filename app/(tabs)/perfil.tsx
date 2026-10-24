@@ -78,6 +78,8 @@ export default function Perfil() {
         <Button title="Editar objetivos" variant="secondary" onPress={() => router.push('/edit-targets')} />
       </Card>
 
+      <Button title="Recordatorios" variant="secondary" onPress={() => router.push('/reminders')} />
+
       <Disclaimer />
 
       <ErrorText>{error}</ErrorText>
