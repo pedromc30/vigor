@@ -45,3 +45,7 @@ App móvil (Expo + React Native + TypeScript, backend Supabase) que combina entr
 - Planificador semanal (opcional) y lista de la compra generada a partir de él (las recetas se descomponen en ingredientes).
 - Open Food Facts limita las consultas (10/min en búsquedas, 15/min por producto), por eso la búsqueda por texto se lanza al pulsar «Buscar».
 - Datos de Open Food Facts: licencia ODbL; pueden contener errores.
+
+## Notas de dependencias
+
+Las versiones de los módulos nativos están fijadas a las que incluye Expo Go para el SDK 58 (`node_modules/expo/bundledNativeModules.json`). Importante: `@react-native-async-storage/async-storage` debe ser la **2.2.0**; la 3.x necesita un módulo nativo que Expo Go no trae y rompe el inicio de sesión en el móvil.
