@@ -90,7 +90,11 @@ const op = (method: PendingOp['method'], query: string, body: unknown, upsertKey
 describe('applyPending', () => {
   it('POST añade filas con valores por defecto sin pisar lo enviado', () => {
     const r = applyPending([], [op('POST', '', [{ id: 's1', session_id: 'x', weight_kg: 60, reps: 8 }])], NOW);
-    expect(r).toEqual([{ rpe: null, target_reps: null, created_at: NOW, id: 's1', session_id: 'x', weight_kg: 60, reps: 8 }]);
+    expect(r).toEqual([{ rpe: null, target_reps: null, set_type: 'normal', sort_order: null, created_at: NOW, id: 's1', session_id: 'x', weight_kg: 60, reps: 8 }]);
+  });
+  it('las series enviadas sin conexión conservan su tipo y orden', () => {
+    const r = applyPending([], [op('POST', '', [{ id: 's2', set_type: 'warmup', sort_order: 0, weight_kg: 20, reps: 10 }])], NOW);
+    expect(r[0]).toMatchObject({ set_type: 'warmup', sort_order: 0 });
   });
   it('un POST repetido con el mismo id no duplica la fila', () => {
     const o = op('POST', '', [{ id: 's1', reps: 8 }]);

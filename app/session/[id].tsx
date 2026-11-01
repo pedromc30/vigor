@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Button, Card, ErrorText, Screen, Text } from '../../src/components/ui';
 import { confirm } from '../../src/lib/confirm';
 import { MUSCLE_LABELS } from '../../src/lib/labels';
+import { repsRange, setLabels, targetLabel } from '../../src/lib/plan';
 import { deleteSession, getSession, getSessionSets } from '../../src/lib/training';
 import {
   bestEstimated1RM,
@@ -55,7 +56,9 @@ export default function SessionDetail() {
   }
 
   const { session, sets } = data;
-  const totalVolume = sets.reduce((sum, s) => sum + setVolume({ weightKg: s.weight_kg, reps: s.reps }), 0);
+  // La aproximación se muestra, pero no cuenta en las series ni en el volumen totales.
+  const workSets = sets.filter((s) => s.set_type !== 'warmup');
+  const totalVolume = workSets.reduce((sum, s) => sum + setVolume({ weightKg: s.weight_kg, reps: s.reps }), 0);
   const seconds = session.finished_at
     ? (new Date(session.finished_at).getTime() - new Date(session.started_at).getTime()) / 1000
     : null;
@@ -71,7 +74,7 @@ export default function SessionDetail() {
       <Card>
         <View style={{ flexDirection: 'row', gap: spacing.xl }}>
           <View>
-            <Text variant="heading">{sets.length}</Text>
+            <Text variant="heading">{workSets.length}</Text>
             <Text variant="caption" muted>
               Series
             </Text>
@@ -86,20 +89,23 @@ export default function SessionDetail() {
       </Card>
 
       {session.plan.map((item, pos) => {
-        const mine = sets.filter((s) => s.position === pos);
+        const mine = sets.filter((s) => s.position === (item.slot ?? pos));
         if (!mine.length) return null;
-        const data = mine.map((s) => ({ weightKg: s.weight_kg, reps: s.reps }));
+        const labels = setLabels(mine.map((s) => ({ type: s.set_type })));
+        const data = mine.map((s) => ({ weightKg: s.weight_kg, reps: s.reps, type: s.set_type }));
         const oneRm = bestEstimated1RM(data);
-        const next = suggestNextWeight(data, item.sets, item.reps_target);
+        const next = suggestNextWeight(data, item.sets, repsRange(item).max);
         return (
-          <Card key={`${item.exercise_id}-${pos}`}>
+          <Card key={`${item.exercise_id}-${item.slot ?? pos}`}>
             <Text variant="heading">{item.name}</Text>
             <Text variant="caption" muted>
-              {MUSCLE_LABELS[item.muscle_group]} · objetivo {item.sets} × {item.reps_target}
+              {MUSCLE_LABELS[item.muscle_group]} · objetivo {targetLabel(item.sets, item)}
             </Text>
-            {mine.map((s) => (
+            {mine.map((s, i) => (
               <Text key={s.id}>
-                <Text muted>Serie {s.set_index + 1}: </Text>
+                <Text muted>
+                  {s.set_type === 'warmup' ? 'Aproximación' : s.set_type === 'dropset' ? 'Dropset' : `Serie ${labels[i]}`}:{' '}
+                </Text>
                 {formatKg(s.weight_kg)} kg × {s.reps}
                 {s.rpe != null ? <Text muted>{` · RPE ${formatKg(s.rpe)}`}</Text> : null}
               </Text>

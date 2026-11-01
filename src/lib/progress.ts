@@ -142,7 +142,7 @@ export async function getSessionDates(since: string): Promise<string[]> {
 export async function listTrainedExercises(): Promise<{ id: string; name: string }[]> {
   const rows = (await selectAll<{ exercise_id: string; exercises: { name: string } | null }>(
     (from, to) =>
-      supabase.from('workout_sets').select('exercise_id, exercises(name)').order('created_at', { ascending: false }).range(from, to) as never,
+      supabase.from('workout_sets').select('exercise_id, exercises(name)').neq('set_type', 'warmup').order('created_at', { ascending: false }).range(from, to) as never,
   )) as { exercise_id: string; exercises: { name: string } | null }[];
   const seen = new Map<string, string>();
   for (const r of rows) if (r.exercises && !seen.has(r.exercise_id)) seen.set(r.exercise_id, r.exercises.name);
@@ -155,6 +155,7 @@ export async function getExerciseSets(exerciseId: string) {
       .from('workout_sets')
       .select('session_id, weight_kg, reps, created_at')
       .eq('exercise_id', exerciseId)
+      .neq('set_type', 'warmup') // la aproximación no cuenta para el 1RM
       .order('created_at')
       .range(from, to),
   );

@@ -4,6 +4,7 @@ import { Button, Card, ErrorText, Screen, Text } from '../../src/components/ui';
 import { useAuth } from '../../src/providers/AuthProvider';
 import { confirm } from '../../src/lib/confirm';
 import { EQUIPMENT_LABELS, MUSCLE_LABELS, WEEKDAY_LONG } from '../../src/lib/labels';
+import { targetLabel } from '../../src/lib/plan';
 import { deleteRoutine, getRoutine, planForDay, startSession } from '../../src/lib/training';
 import { useFocusData } from '../../src/lib/use-focus-data';
 
@@ -77,7 +78,7 @@ export default function RoutineView() {
               <Text key={e.id}>
                 {e.exercises?.name ?? 'Ejercicio'}{' '}
                 <Text muted>
-                  — {e.sets}×{e.reps_target}, descanso {e.rest_seconds} s
+                  — {targetLabel(e.sets, e).replace(' × ', '×')}, descanso {e.rest_seconds} s
                   {e.exercises ? ` · ${MUSCLE_LABELS[e.exercises.muscle_group]} · ${EQUIPMENT_LABELS[e.exercises.equipment]}` : ''}
                 </Text>
                 {e.notes ? <Text variant="caption" muted>{`\n${e.notes}`}</Text> : null}

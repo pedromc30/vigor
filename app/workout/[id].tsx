@@ -1,12 +1,30 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { ActionSheet } from '../../src/components/action-sheet';
 import { ExercisePicker } from '../../src/components/exercise-picker';
-import { ElapsedClock, RestBar, type RestState } from '../../src/components/rest-timer';
+import { ReorderSheet } from '../../src/components/reorder-sheet';
+import { ElapsedClock, RestBar, RestDoneToast, type RestState } from '../../src/components/rest-timer';
+import { RPE_OPTIONS, SelectField } from '../../src/components/select-field';
 import { Button, Card, ErrorText, LinkButton, Screen, Text } from '../../src/components/ui';
 import { confirm } from '../../src/lib/confirm';
 import {
+  insertAt,
+  nextSetIndex,
+  nextSlot,
+  orderByKeys,
+  orderUpdates,
+  removeAt,
+  repsLabel,
+  repsRange,
+  setLabels,
+  targetLabel,
+  warmupInsertIndex,
+} from '../../src/lib/plan';
+import { syncRestNotification } from '../../src/lib/rest-notification';
+import {
+  bySetOrder,
   deleteSession,
   deleteSet,
   finishSession,
@@ -15,48 +33,77 @@ import {
   getSessionSets,
   saveSet,
   updateSessionPlan,
+  updateSetOrders,
   type Exercise,
   type PlanItem,
   type Session,
   type SessionSet,
 } from '../../src/lib/training';
-import { bestEstimated1RM, formatKg, suggestNextWeight, targetsMet } from '../../src/lib/training-math';
+import {
+  bestEstimated1RM,
+  formatKg,
+  isNormalSet,
+  suggestNextWeight,
+  targetsMet,
+  type SetType,
+} from '../../src/lib/training-math';
 import { parseDecimal } from '../../src/lib/validation';
 import { success, tap } from '../../src/lib/haptics';
 import { useAuth } from '../../src/providers/AuthProvider';
 import { radius, spacing, useTheme } from '../../src/theme';
 
 interface Row {
+  /** Identidad local de la fila (no cambia aunque se reordene). */
+  id: string;
+  /** Identidad de la serie en la base de datos (set_index). */
+  setIndex: number;
+  type: SetType;
   weight: string;
   reps: string;
   rpe: string;
   dbId: string | null;
+  /** Orden guardado en la base de datos (null = sin guardar o serie antigua). */
+  sortOrder: number | null;
   busy: boolean;
 }
 type Previous = Record<string, { date: string; sets: SessionSet[] }>;
 
 const toData = (s: { weight_kg: number; reps: number }) => ({ weightKg: s.weight_kg, reps: s.reps });
+const slotOf = (item: PlanItem, pos: number) => item.slot ?? pos;
 
-/** Filas de series de un ejercicio: las ya registradas más las pendientes, con la carga sugerida. */
-function buildRows(item: PlanItem, position: number, sets: SessionSet[], prev?: Previous[string]): Row[] {
-  const mine = sets.filter((s) => s.position === position);
-  const count = Math.max(item.sets, ...mine.map((s) => s.set_index + 1));
-  const suggestion = prev ? suggestNextWeight(prev.sets.map(toData), item.sets, item.reps_target) : null;
-  return Array.from({ length: count }, (_, i): Row => {
-    const done = mine.find((s) => s.set_index === i);
-    if (done) {
-      return {
-        weight: formatKg(done.weight_kg),
-        reps: String(done.reps),
-        rpe: done.rpe == null ? '' : formatKg(done.rpe),
-        dbId: done.id,
-        busy: false,
-      };
-    }
-    const fallback = prev?.sets[i]?.weight_kg ?? prev?.sets[prev.sets.length - 1]?.weight_kg;
+/** Filas de series de un ejercicio: las ya registradas (en su orden) más las normales que faltan, con la carga sugerida. */
+function buildRows(item: PlanItem, pos: number, sets: SessionSet[], newId: () => string, prev?: Previous[string]): Row[] {
+  const mine = sets.filter((s) => s.position === slotOf(item, pos)).sort(bySetOrder);
+  const { max } = repsRange(item);
+  const suggestion = prev ? suggestNextWeight(prev.sets.map(toData), item.sets, max) : null;
+  const rows: Row[] = mine.map((s) => ({
+    id: newId(),
+    setIndex: s.set_index,
+    type: s.set_type,
+    weight: formatKg(s.weight_kg),
+    reps: String(s.reps),
+    rpe: s.rpe == null ? '' : formatKg(s.rpe),
+    dbId: s.id,
+    sortOrder: s.sort_order,
+    busy: false,
+  }));
+  const normalDone = rows.filter((r) => r.type === 'normal').length;
+  for (let k = normalDone; k < item.sets; k++) {
+    const fallback = prev?.sets[k]?.weight_kg ?? prev?.sets[prev.sets.length - 1]?.weight_kg;
     const w = suggestion ?? fallback;
-    return { weight: w != null ? formatKg(w) : '', reps: String(item.reps_target), rpe: '', dbId: null, busy: false };
-  });
+    rows.push({
+      id: newId(),
+      setIndex: nextSetIndex(rows),
+      type: 'normal',
+      weight: w != null ? formatKg(w) : '',
+      reps: String(max),
+      rpe: '',
+      dbId: null,
+      sortOrder: null,
+      busy: false,
+    });
+  }
+  return rows;
 }
 
 export default function Workout() {
@@ -64,13 +111,19 @@ export default function Workout() {
   const { session: auth } = useAuth();
   const { id } = useLocalSearchParams<{ id: string }>();
 
+  const rowCounter = useRef(0);
+  const newRowId = useCallback(() => `r${++rowCounter.current}`, []);
+
   const [session, setSession] = useState<Session | null>(null);
   const [rows, setRows] = useState<Row[][]>([]);
   const [prev, setPrev] = useState<Previous>({});
   const [loadError, setLoadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [rest, setRest] = useState<RestState | null>(null);
+  const [restDone, setRestDone] = useState(false);
   const [picker, setPicker] = useState(false);
+  const [reorder, setReorder] = useState(false);
+  const [menu, setMenu] = useState<{ pos: number; rowId: string } | null>(null);
   const [finishing, setFinishing] = useState(false);
 
   useEffect(() => {
@@ -82,30 +135,59 @@ export default function Workout() {
         const previous = await getPreviousSets([...new Set(s.plan.map((p) => p.exercise_id))], id).catch(() => ({}) as Previous); // sin red puede no haber histórico
         setSession(s);
         setPrev(previous);
-        setRows(s.plan.map((p, pos) => buildRows(p, pos, sets, previous[p.exercise_id])));
+        setRows(s.plan.map((p, pos) => buildRows(p, pos, sets, newRowId, previous[p.exercise_id])));
       } catch {
         setLoadError('No se pudo cargar la sesión. Comprueba tu conexión.');
       }
     })();
-  }, [id]);
+  }, [id, newRowId]);
 
-  const patchRow = (pos: number, idx: number, patch: Partial<Row>) =>
-    setRows((all) => all.map((rs, p) => (p === pos ? rs.map((r, i) => (i === idx ? { ...r, ...patch } : r)) : rs)));
+  // El aviso del sistema de fin de descanso sigue siempre al temporizador: se reprograma al iniciar, alargar, acortar o saltar.
+  const restEndsAt = rest?.endsAt ?? null;
+  useEffect(() => {
+    void syncRestNotification(restEndsAt);
+  }, [restEndsAt]);
+  useEffect(() => () => void syncRestNotification(null), []);
 
-  const toggleSet = async (pos: number, idx: number) => {
+  const patchRow = (rowId: string, patch: Partial<Row>) =>
+    setRows((all) => all.map((rs) => rs.map((r) => (r.id === rowId ? { ...r, ...patch } : r))));
+
+  const replaceRows = (pos: number, next: Row[]) => setRows((all) => all.map((rs, p) => (p === pos ? next : rs)));
+
+  /** Guarda el orden de las series ya registradas cuyo lugar ha cambiado al insertar o borrar otra. */
+  const persistOrder = async (next: Row[]) => {
+    const updates = orderUpdates(next);
+    if (!updates.length) return;
+    try {
+      await updateSetOrders(updates);
+      setRows((all) =>
+        all.map((rs) =>
+          rs.map((r) => {
+            const u = updates.find((x) => x.dbId === r.dbId);
+            return u ? { ...r, sortOrder: u.sortOrder } : r;
+          }),
+        ),
+      );
+    } catch {
+      setError('No se pudo guardar el nuevo orden de las series. Comprueba tu conexión.');
+    }
+  };
+
+  const toggleSet = async (pos: number, rowId: string) => {
     if (!session || !auth) return;
     const item = session.plan[pos];
-    const row = rows[pos][idx];
-    if (row.busy) return;
+    const index = rows[pos].findIndex((r) => r.id === rowId);
+    const row = rows[pos][index];
+    if (!row || row.busy) return;
     setError(null);
 
     if (row.dbId) {
-      patchRow(pos, idx, { busy: true });
+      patchRow(rowId, { busy: true });
       try {
         await deleteSet(row.dbId);
-        patchRow(pos, idx, { dbId: null, busy: false });
+        patchRow(rowId, { dbId: null, sortOrder: null, busy: false });
       } catch {
-        patchRow(pos, idx, { busy: false });
+        patchRow(rowId, { busy: false });
         setError('No se pudo deshacer la serie. Comprueba tu conexión.');
       }
       return;
@@ -120,36 +202,91 @@ export default function Workout() {
     if (row.rpe.trim() !== '' && (rpe === null || rpe < 1 || rpe > 10))
       return setError(`${item.name}: el RPE debe estar entre 1 y 10.`);
 
-    patchRow(pos, idx, { busy: true });
+    patchRow(rowId, { busy: true });
     try {
       const saved = await saveSet({
         session_id: session.id,
         user_id: auth.user.id,
         exercise_id: item.exercise_id,
-        position: pos,
-        set_index: idx,
+        position: slotOf(item, pos),
+        set_index: row.setIndex,
         weight_kg: weight,
         reps,
         rpe,
-        target_reps: item.reps_target,
+        target_reps: repsRange(item).max,
+        set_type: row.type,
+        sort_order: index,
       });
-      patchRow(pos, idx, { dbId: saved.id, busy: false });
+      patchRow(rowId, { dbId: saved.id, sortOrder: index, busy: false });
       tap();
-      if (item.rest_seconds > 0) setRest({ endsAt: Date.now() + item.rest_seconds * 1000, total: item.rest_seconds });
+      if (item.rest_seconds > 0) {
+        setRest({ endsAt: Date.now() + item.rest_seconds * 1000, total: item.rest_seconds });
+        setRestDone(false);
+      }
     } catch {
-      patchRow(pos, idx, { busy: false });
+      patchRow(rowId, { busy: false });
       setError('No se pudo guardar la serie. Comprueba tu conexión e inténtalo de nuevo.');
     }
   };
 
-  const addSet = (pos: number) =>
-    setRows((all) =>
-      all.map((rs, p) => {
-        if (p !== pos) return rs;
-        const last = rs[rs.length - 1];
-        return [...rs, { weight: last?.weight ?? '', reps: last?.reps ?? '', rpe: '', dbId: null, busy: false }];
-      }),
-    );
+  const newRow = (rs: Row[], type: SetType, from?: Row): Row => ({
+    id: newRowId(),
+    setIndex: nextSetIndex(rs),
+    type,
+    weight: from?.weight ?? '',
+    reps: from?.reps ?? (type === 'warmup' ? '10' : ''),
+    rpe: '',
+    dbId: null,
+    sortOrder: null,
+    busy: false,
+  });
+
+  /** Serie normal al final. */
+  const addSet = (pos: number) => {
+    const rs = rows[pos];
+    const last = [...rs].reverse().find((r) => r.type !== 'warmup');
+    replaceRows(pos, [...rs, newRow(rs, 'normal', last)]);
+  };
+
+  /** Aproximación: tras las que ya hay y antes de cualquier otra serie. */
+  const addWarmup = (pos: number) => {
+    const rs = rows[pos];
+    const next = insertAt(rs, warmupInsertIndex(rs), newRow(rs, 'warmup'));
+    replaceRows(pos, next);
+    void persistOrder(next);
+  };
+
+  /** Dropset justo después de la serie `afterId` (por defecto, la última serie de trabajo). */
+  const addDropset = (pos: number, afterId?: string) => {
+    const rs = rows[pos];
+    let index = afterId ? rs.findIndex((r) => r.id === afterId) : -1;
+    if (index === -1) index = rs.map((r) => r.type).lastIndexOf('normal');
+    if (index === -1) return setError('Añade primero una serie normal para poder hacer un dropset a continuación.');
+    const next = insertAt(rs, index + 1, newRow(rs, 'dropset', rs[index]));
+    replaceRows(pos, next);
+    void persistOrder(next);
+  };
+
+  const deleteRow = async (pos: number, rowId: string) => {
+    const rs = rows[pos];
+    const index = rs.findIndex((r) => r.id === rowId);
+    const row = rs[index];
+    if (!row) return;
+    setError(null);
+    if (row.dbId) {
+      if (!(await confirm('Eliminar serie', 'Se borrará esta serie registrada.', 'Eliminar', true))) return;
+      patchRow(rowId, { busy: true });
+      try {
+        await deleteSet(row.dbId);
+      } catch {
+        patchRow(rowId, { busy: false });
+        return setError('No se pudo eliminar la serie. Comprueba tu conexión.');
+      }
+    }
+    const next = removeAt(rs, index);
+    replaceRows(pos, next);
+    void persistOrder(next);
+  };
 
   const addExercise = async (e: Exercise) => {
     if (!session) return;
@@ -160,8 +297,11 @@ export default function Workout() {
       muscle_group: e.muscle_group,
       sets: 3,
       reps_target: 10,
+      reps_min: 10,
+      reps_max: 10,
       rest_seconds: 90,
       notes: '',
+      slot: nextSlot(session.plan),
     };
     const plan = [...session.plan, item];
     try {
@@ -169,17 +309,36 @@ export default function Workout() {
       const known = prev[e.id] ? prev : { ...prev, ...(await getPreviousSets([e.id], session.id).catch(() => ({}))) };
       setPrev(known);
       setSession({ ...session, plan });
-      setRows((all) => [...all, buildRows(item, plan.length - 1, [], known[e.id])]);
+      setRows((all) => [...all, buildRows(item, plan.length - 1, [], newRowId, known[e.id])]);
     } catch {
       setError('No se pudo añadir el ejercicio. Comprueba tu conexión.');
     }
   };
 
-  const doneCount = rows.flat().filter((r) => r.dbId).length;
+  /** Solo cambia el orden de esta sesión: la rutina guardada no se toca. Las series quedan ligadas al `slot`. */
+  const applyExerciseOrder = async (keys: string[]) => {
+    if (!session) return;
+    const plan = orderByKeys(session.plan, (p) => String(p.slot), keys);
+    const bySlot = new Map(session.plan.map((p, i) => [String(p.slot), rows[i]]));
+    const previousSession = session;
+    const previousRows = rows;
+    setSession({ ...session, plan });
+    setRows(plan.map((p) => bySlot.get(String(p.slot)) ?? []));
+    try {
+      await updateSessionPlan(session.id, plan);
+    } catch {
+      setSession(previousSession);
+      setRows(previousRows);
+      setError('No se pudo guardar el nuevo orden. Comprueba tu conexión.');
+    }
+  };
+
+  const doneCount = rows.flat().filter((r) => r.dbId && r.type !== 'warmup').length;
+  const anyDone = rows.flat().some((r) => r.dbId);
 
   const finish = async () => {
     if (!session) return;
-    if (doneCount === 0) {
+    if (!anyDone) {
       if (!(await confirm('Descartar sesión', 'No has registrado ninguna serie. ¿Descartar la sesión?', 'Descartar', true))) return;
       setFinishing(true);
       try {
@@ -215,6 +374,8 @@ export default function Workout() {
   };
 
   const onRestChange = useCallback((next: RestState | null) => setRest(next), []);
+  const onRestFinished = useCallback(() => setRestDone(true), []);
+  const hideRestDone = useCallback(() => setRestDone(false), []);
 
   if (loadError) {
     return (
@@ -232,6 +393,9 @@ export default function Workout() {
     );
   }
 
+  const menuRow = menu ? rows[menu.pos]?.find((r) => r.id === menu.rowId) : undefined;
+  const menuLabel = menu && menuRow ? setLabels(rows[menu.pos])[rows[menu.pos].indexOf(menuRow)] : '';
+
   return (
     <View style={{ flex: 1 }}>
       <Screen>
@@ -244,26 +408,62 @@ export default function Workout() {
 
         {session.plan.map((item, pos) => (
           <ExerciseCard
-            key={`${item.exercise_id}-${pos}`}
+            key={`${item.exercise_id}-${slotOf(item, pos)}`}
             item={item}
             rows={rows[pos] ?? []}
             previous={prev[item.exercise_id]}
-            onChange={(idx, patch) => patchRow(pos, idx, patch)}
-            onToggle={(idx) => void toggleSet(pos, idx)}
+            onChange={patchRow}
+            onToggle={(rowId) => void toggleSet(pos, rowId)}
             onAddSet={() => addSet(pos)}
+            onAddWarmup={() => addWarmup(pos)}
+            onAddDropset={() => addDropset(pos)}
+            onMenu={(rowId) => setMenu({ pos, rowId })}
           />
         ))}
 
         <Button title="Añadir ejercicio" variant="secondary" onPress={() => setPicker(true)} />
+        {session.plan.length > 1 ? (
+          <Button title="Reordenar ejercicios" variant="ghost" onPress={() => setReorder(true)} />
+        ) : null}
         <ErrorText>{error}</ErrorText>
         <Button title="Terminar sesión" onPress={() => void finish()} loading={finishing} />
         <LinkButton title="Descartar sesión" danger onPress={() => void discard()} />
         {rest ? <View style={{ height: 96 }} /> : null}
       </Screen>
 
-      {rest ? <RestBar rest={rest} onChange={onRestChange} /> : null}
+      {rest ? <RestBar rest={rest} onChange={onRestChange} onFinished={onRestFinished} /> : null}
+      <RestDoneToast visible={restDone} onHide={hideRestDone} />
 
       <ExercisePicker visible={picker} onClose={() => setPicker(false)} onPick={(e) => void addExercise(e)} />
+
+      <ReorderSheet
+        visible={reorder}
+        title="Reordenar ejercicios"
+        subtitle="Solo cambia esta sesión; tu rutina guardada no se modifica."
+        items={session.plan.map((p, i) => ({
+          key: String(slotOf(p, i)),
+          label: p.name,
+          hint: targetLabel(p.sets, p),
+        }))}
+        onClose={() => setReorder(false)}
+        onApply={(keys) => void applyExerciseOrder(keys)}
+      />
+
+      <ActionSheet
+        visible={!!menu && !!menuRow}
+        title={menuRow ? `Serie ${menuLabel}` : ''}
+        onClose={() => setMenu(null)}
+        actions={
+          menu && menuRow
+            ? [
+                ...(menuRow.type !== 'warmup'
+                  ? [{ label: 'Añadir dropset a continuación', icon: 'arrow-down-circle-outline' as const, onPress: () => addDropset(menu.pos, menuRow.id) }]
+                  : []),
+                { label: 'Eliminar serie', icon: 'trash-outline' as const, danger: true, onPress: () => void deleteRow(menu.pos, menuRow.id) },
+              ]
+            : []
+        }
+      />
     </View>
   );
 }
@@ -275,26 +475,38 @@ function ExerciseCard({
   onChange,
   onToggle,
   onAddSet,
+  onAddWarmup,
+  onAddDropset,
+  onMenu,
 }: {
   item: PlanItem;
   rows: Row[];
   previous?: Previous[string];
-  onChange: (idx: number, patch: Partial<Row>) => void;
-  onToggle: (idx: number) => void;
+  onChange: (rowId: string, patch: Partial<Row>) => void;
+  onToggle: (rowId: string) => void;
   onAddSet: () => void;
+  onAddWarmup: () => void;
+  onAddDropset: () => void;
+  onMenu: (rowId: string) => void;
 }) {
   const { colors } = useTheme();
-  const done = rows.filter((r) => r.dbId).map((r) => ({ weightKg: parseDecimal(r.weight) ?? 0, reps: parseDecimal(r.reps) ?? 0 }));
-  const suggestion = previous ? suggestNextWeight(previous.sets.map(toData), item.sets, item.reps_target) : null;
+  const { min, max } = repsRange(item);
+  const isRange = min !== max;
+  const labels = setLabels(rows);
+  const done = rows
+    .filter((r) => r.dbId)
+    .map((r) => ({ weightKg: parseDecimal(r.weight) ?? 0, reps: parseDecimal(r.reps) ?? 0, type: r.type }));
+  const suggestion = previous ? suggestNextWeight(previous.sets.map(toData), item.sets, max) : null;
+  // La aproximación no cuenta para el 1RM; el objetivo y la progresión miran solo las series normales.
   const oneRm = bestEstimated1RM(done);
-  const completed = done.length >= item.sets && targetsMet(done, item.sets, item.reps_target);
-  const nextWeight = completed ? suggestNextWeight(done, item.sets, item.reps_target) : null;
+  const completed = done.filter(isNormalSet).length >= item.sets && targetsMet(done, item.sets, max);
+  const nextWeight = completed ? suggestNextWeight(done, item.sets, max) : null;
 
   return (
     <Card>
       <Text variant="heading">{item.name}</Text>
       <Text variant="caption" muted>
-        Objetivo: {item.sets} × {item.reps_target} · descanso {item.rest_seconds} s
+        Objetivo: {targetLabel(item.sets, item)} · descanso {item.rest_seconds} s
       </Text>
       {item.notes ? <Text variant="caption">{item.notes}</Text> : null}
 
@@ -310,41 +522,65 @@ function ExerciseCard({
       )}
       {suggestion != null ? (
         <Text variant="caption" style={{ color: colors.primary, fontWeight: '600' }}>
-          Sugerencia: {formatKg(suggestion)} kg (completaste todas las repeticiones la última vez)
+          Sugerencia: {formatKg(suggestion)} kg ({isRange ? `llegaste a ${max} repeticiones en todas las series` : 'completaste todas las repeticiones la última vez'})
         </Text>
       ) : null}
 
-      <View style={{ flexDirection: 'row', gap: spacing.sm, paddingTop: spacing.xs }}>
-        <Text variant="caption" muted numberOfLines={1} style={{ width: 38 }}>
+      <View style={{ flexDirection: 'row', gap: ROW_GAP, paddingTop: spacing.xs }}>
+        <Text variant="caption" muted numberOfLines={1} style={{ width: LABEL_W }}>
           Serie
         </Text>
-        <Text variant="caption" muted style={{ flex: 1.2 }}>
+        <Text variant="caption" muted style={{ flex: 1.3, minWidth: 0 }}>
           kg
         </Text>
-        <Text variant="caption" muted style={{ flex: 1 }}>
+        <Text variant="caption" muted style={{ flex: 1, minWidth: 0 }}>
           Reps
         </Text>
-        <Text variant="caption" muted style={{ flex: 0.9 }}>
+        <Text variant="caption" muted style={{ flex: 0.9, minWidth: 0 }}>
           RPE
         </Text>
-        <View style={{ width: 40 }} />
+        <View style={{ width: CHECK_W }} />
       </View>
 
       {rows.map((r, idx) => (
-        <View key={idx} style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'center' }}>
-          <Text style={{ width: 38 }} muted>
-            {idx + 1}
-          </Text>
-          <SetInput flex={1.2} label={`Peso serie ${idx + 1}`} value={r.weight} editable={!r.dbId} onChangeText={(t) => onChange(idx, { weight: t })} decimal />
-          <SetInput flex={1} label={`Repeticiones serie ${idx + 1}`} value={r.reps} editable={!r.dbId} onChangeText={(t) => onChange(idx, { reps: t })} />
-          <SetInput flex={0.9} label={`RPE serie ${idx + 1}`} value={r.rpe} editable={!r.dbId} onChangeText={(t) => onChange(idx, { rpe: t })} decimal />
+        <View key={r.id} style={{ flexDirection: 'row', gap: ROW_GAP, alignItems: 'center' }}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Serie ${labels[idx]}${r.type === 'warmup' ? ' de aproximación' : r.type === 'dropset' ? ' dropset' : ''}: opciones`}
+            onPress={() => onMenu(r.id)}
+            style={{
+              width: LABEL_W,
+              height: 36,
+              borderRadius: radius.sm,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: r.type === 'normal' ? colors.surfaceAlt : colors.warningBg,
+              borderWidth: 1,
+              borderColor: r.type === 'normal' ? colors.border : colors.warningText,
+            }}
+          >
+            <Text variant="label" style={{ color: r.type === 'normal' ? colors.textMuted : colors.warningText }}>
+              {labels[idx]}
+            </Text>
+          </Pressable>
+          <SetInput flex={1.3} label={`Peso serie ${labels[idx]}`} value={r.weight} editable={!r.dbId} onChangeText={(t) => onChange(r.id, { weight: t })} decimal />
+          <SetInput flex={1} label={`Repeticiones serie ${labels[idx]}`} value={r.reps} editable={!r.dbId} onChangeText={(t) => onChange(r.id, { reps: t })} />
+          <SelectField
+            style={{ flex: 0.9 }}
+            label={`RPE serie ${labels[idx]}`}
+            title="RPE (esfuerzo percibido)"
+            value={r.rpe}
+            options={RPE_OPTIONS}
+            disabled={!!r.dbId}
+            onChange={(k) => onChange(r.id, { rpe: k })}
+          />
           <Pressable
             accessibilityRole="checkbox"
-            accessibilityLabel={`Serie ${idx + 1} completada`}
+            accessibilityLabel={`Serie ${labels[idx]} completada`}
             accessibilityState={{ checked: !!r.dbId, busy: r.busy }}
-            onPress={() => onToggle(idx)}
+            onPress={() => onToggle(r.id)}
             hitSlop={6}
-            style={{ width: 40, height: 44, alignItems: 'center', justifyContent: 'center', opacity: r.busy ? 0.5 : 1 }}
+            style={{ width: CHECK_W, height: 44, alignItems: 'center', justifyContent: 'center', opacity: r.busy ? 0.5 : 1 }}
           >
             <Ionicons
               name={r.dbId ? 'checkmark-circle' : 'ellipse-outline'}
@@ -355,7 +591,11 @@ function ExerciseCard({
         </View>
       ))}
 
-      <LinkButton title="+ Serie" onPress={onAddSet} />
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: spacing.lg }}>
+        <LinkButton title="+ Serie" onPress={onAddSet} />
+        <LinkButton title="+ Aproximación" onPress={onAddWarmup} />
+        <LinkButton title="+ Dropset" onPress={onAddDropset} />
+      </View>
 
       {oneRm != null ? (
         <Text variant="caption" muted>
@@ -366,13 +606,19 @@ function ExerciseCard({
         <View style={{ backgroundColor: colors.surfaceAlt, borderRadius: radius.md, padding: spacing.md }}>
           <Text variant="label">¡Objetivo cumplido!</Text>
           <Text variant="caption">
-            Has completado todas las repeticiones objetivo. La próxima vez prueba con {formatKg(nextWeight)} kg.
+            {isRange
+              ? `Has llegado a ${max} repeticiones en todas las series normales. La próxima vez prueba con ${formatKg(nextWeight)} kg y vuelve a ${repsLabel(min, min)} repeticiones.`
+              : `Has completado todas las repeticiones objetivo. La próxima vez prueba con ${formatKg(nextWeight)} kg.`}
           </Text>
         </View>
       ) : null}
     </Card>
   );
 }
+
+const LABEL_W = 34;
+const CHECK_W = 38;
+const ROW_GAP = 6;
 
 function SetInput({
   value,

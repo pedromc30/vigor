@@ -1,10 +1,13 @@
-import { draftToInput, validateDraft, type RoutineDraft } from '../routine-draft';
+import { draftToInput, repsFields, validateDraft, type RoutineDraft } from '../routine-draft';
 
 const item = (over: Partial<RoutineDraft['days'][0]['items'][0]> = {}) => ({
   key: 'k',
   exercise: { id: 'e1', name: 'Press de banca con barra', muscle_group: 'pecho' as const },
   sets: '3',
+  repsMode: 'fixed' as const,
   reps: '8',
+  repsMin: '8',
+  repsMax: '8',
   rest: '90',
   notes: '',
   ...over,
@@ -39,6 +42,42 @@ describe('validateDraft', () => {
     expect(validateDraft(d)).toMatch(/Descanso/);
     d.days[0].items = [item({ rest: '0' })];
     expect(validateDraft(d)).toBeNull();
+  });
+});
+
+describe('repeticiones fijas o en rango', () => {
+  const withItem = (over: Parameters<typeof item>[0]): RoutineDraft => {
+    const d = base();
+    d.days[0].items = [item(over)];
+    return d;
+  };
+
+  it('repsFields: mínimo = máximo es fijo; distintos, rango', () => {
+    expect(repsFields(8, 8)).toEqual({ repsMode: 'fixed', reps: '8', repsMin: '8', repsMax: '8' });
+    expect(repsFields(6, 8)).toEqual({ repsMode: 'range', reps: '8', repsMin: '6', repsMax: '8' });
+  });
+
+  it('modo fijo guarda reps_min = reps_max = reps_target', () => {
+    const [it] = draftToInput(withItem({ reps: '12' })).items;
+    expect([it.reps_min, it.reps_max, it.reps_target]).toEqual([12, 12, 12]);
+  });
+
+  it('modo rango guarda mínimo y máximo, y reps_target = máximo', () => {
+    const [it] = draftToInput(withItem({ repsMode: 'range', repsMin: '6', repsMax: '8', reps: '99' })).items;
+    expect([it.reps_min, it.reps_max, it.reps_target]).toEqual([6, 8, 8]);
+  });
+
+  it('en modo rango el campo de repeticiones fijas se ignora (y al revés)', () => {
+    expect(validateDraft(withItem({ repsMode: 'range', repsMin: '6', repsMax: '8', reps: 'x' }))).toBeNull();
+    expect(validateDraft(withItem({ repsMode: 'fixed', repsMin: 'x', repsMax: 'y' }))).toBeNull();
+  });
+
+  it('valida el rango', () => {
+    expect(validateDraft(withItem({ repsMode: 'range', repsMin: '9', repsMax: '8' }))).toMatch(/mínimo no puede ser mayor/);
+    expect(validateDraft(withItem({ repsMode: 'range', repsMin: '', repsMax: '8' }))).toMatch(/Rango de repeticiones/);
+    expect(validateDraft(withItem({ repsMode: 'range', repsMin: '0', repsMax: '8' }))).toMatch(/Rango de repeticiones/);
+    expect(validateDraft(withItem({ repsMode: 'range', repsMin: '6', repsMax: '101' }))).toMatch(/Rango de repeticiones/);
+    expect(validateDraft(withItem({ repsMode: 'range', repsMin: '8', repsMax: '8' }))).toBeNull();
   });
 });
 

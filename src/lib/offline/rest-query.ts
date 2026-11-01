@@ -130,7 +130,7 @@ export function defaultsFor(table: string, nowIso: string): Row {
     case 'workout_sessions':
       return { routine_id: null, plan: [], started_at: nowIso, finished_at: null, notes: '' };
     case 'workout_sets':
-      return { rpe: null, target_reps: null, created_at: nowIso };
+      return { rpe: null, target_reps: null, set_type: 'normal', sort_order: null, created_at: nowIso };
     case 'meal_logs':
       return { food_id: null, recipe_id: null, quantity_g: null, servings: null, created_at: nowIso };
     case 'water_logs':

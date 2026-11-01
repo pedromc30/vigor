@@ -15,10 +15,29 @@ describe('workoutsTable', () => {
     expect(t.headers).toHaveLength(t.rows[0].length);
     expect(t.rows.map((r) => [r[0], r[2], r[4], r[5]])).toEqual([
       ['2026-10-10', 'Press', 1, 60],
-      ['2026-10-10', 'Remo', 2, 50],
+      ['2026-10-10', 'Remo', 1, 50], // «serie» es el orden dentro del ejercicio de esa sesión
       ['2026-10-20', 'Sentadilla', 1, 100],
     ]);
     expect(t.rows.map((r) => r[9])).toEqual(['sí', 'sí', 'no']);
+    expect(t.rows.map((r) => r[10])).toEqual(['normal', 'normal', 'normal']);
+  });
+
+  it('tipo de serie, orden en pantalla y ejercicios reordenados (slot)', () => {
+    const sess = [
+      // Sentadilla se hizo primero en pantalla (slot 1) y Press después (slot 0)
+      { id: 's', routine_name: 'R', started_at: '2026-10-10T09:00:00Z', finished_at: null, plan: [{ name: 'Sentadilla', muscle_group: 'cuadriceps', slot: 1 }, { name: 'Press', muscle_group: 'pecho', slot: 0 }] },
+    ];
+    const st = [
+      { session_id: 's', position: 0, set_index: 0, weight_kg: 60, reps: 8, rpe: null, target_reps: 8, set_type: 'normal', sort_order: 1 },
+      { session_id: 's', position: 0, set_index: 1, weight_kg: 30, reps: 10, rpe: null, target_reps: 8, set_type: 'warmup', sort_order: 0 },
+      { session_id: 's', position: 1, set_index: 0, weight_kg: 100, reps: 5, rpe: 8, target_reps: 5, set_type: 'dropset', sort_order: 0 },
+    ];
+    const t = workoutsTable(sess, st);
+    expect(t.rows.map((r) => [r[2], r[4], r[5], r[10]])).toEqual([
+      ['Sentadilla', 1, 100, 'dropset'],
+      ['Press', 1, 30, 'aproximacion'],
+      ['Press', 2, 60, 'normal'],
+    ]);
   });
   it('tolera series cuya sesión o ejercicio ya no existe', () => {
     const t = workoutsTable([], [sets[0]]);
@@ -34,7 +53,9 @@ describe('otras tablas', () => {
   });
   it('rutinas: día de la semana en texto', () => {
     const t = routinesTable([{ name: 'R', notes: '', day_names: ['D1'], schedule: [3], routine_exercises: [{ day_index: 0, position: 0, sets: 3, reps_target: 8, rest_seconds: 90, notes: '', exercises: { name: 'Press' } }] }]);
-    expect(t.rows[0]).toEqual(['R', 'D1', 'miércoles', 'Press', 3, 8, 90, '']);
+    expect(t.rows[0]).toEqual(['R', 'D1', 'miércoles', 'Press', 3, 8, 90, '', 8, 8]);
+    const r = routinesTable([{ name: 'R', notes: '', day_names: ['D1'], schedule: [3], routine_exercises: [{ day_index: 0, position: 0, sets: 3, reps_target: 8, reps_min: 6, reps_max: 8, rest_seconds: 90, notes: '', exercises: { name: 'Press' } }] }]);
+    expect(r.rows[0].slice(-2)).toEqual([6, 8]);
   });
   it('diario, agua, medidas, alimentos, recetas, plan y fotos: columnas coherentes', () => {
     const entry = { meal: 'comida', name: 'Arroz', quantity_g: 100, servings: null, kcal: 130, protein_g: 3, carbs_g: 28, fat_g: 0.3 };

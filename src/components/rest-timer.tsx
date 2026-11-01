@@ -5,6 +5,8 @@ import { formatClock } from '../lib/training-math';
 import { radius, spacing, useTheme } from '../theme';
 import { Text } from './ui';
 
+const LATE_SECONDS = 3;
+
 export interface RestState {
   endsAt: number;
   total: number;
@@ -14,9 +16,12 @@ export interface RestState {
 export function RestBar({
   rest,
   onChange,
+  onFinished,
 }: {
   rest: RestState;
   onChange: (next: RestState | null) => void;
+  /** Se llama una vez cuando el descanso termina con la app abierta (no si se vuelve mucho después). */
+  onFinished?: () => void;
 }) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
@@ -31,10 +36,14 @@ export function RestBar({
 
   useEffect(() => {
     if (remaining <= 0) {
-      Vibration.vibrate([0, 400, 150, 400]);
+      // Si se vuelve a la app mucho después de terminar, el aviso del sistema ya cumplió: no se repite aquí.
+      if (-remaining < LATE_SECONDS) {
+        Vibration.vibrate([0, 400, 150, 400]);
+        onFinished?.();
+      }
       onChange(null);
     }
-  }, [remaining, onChange]);
+  }, [remaining, onChange, onFinished]);
 
   const adjust = (seconds: number) => onChange({ endsAt: rest.endsAt + seconds * 1000, total: rest.total + seconds });
   const progress = Math.min(1, Math.max(0, 1 - remaining / rest.total));
@@ -104,5 +113,43 @@ export function ElapsedClock({ since }: { since: string }) {
     <Text variant="caption" muted style={{ fontVariant: ['tabular-nums'] }}>
       {formatClock((now - new Date(since).getTime()) / 1000)}
     </Text>
+  );
+}
+
+/** Aviso dentro de la app al terminar el descanso. Se oculta solo. */
+export function RestDoneToast({ visible, onHide }: { visible: boolean; onHide: () => void }) {
+  const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
+  useEffect(() => {
+    if (!visible) return;
+    const t = setTimeout(onHide, 5000);
+    return () => clearTimeout(t);
+  }, [visible, onHide]);
+  if (!visible) return null;
+  return (
+    <Pressable
+      accessibilityRole="alert"
+      accessibilityLiveRegion="assertive"
+      onPress={onHide}
+      style={{
+        position: 'absolute',
+        top: insets.top + spacing.sm,
+        left: spacing.lg,
+        right: spacing.lg,
+        alignSelf: 'center',
+        maxWidth: 640,
+        backgroundColor: colors.primary,
+        borderRadius: radius.lg,
+        padding: spacing.md,
+        elevation: 8,
+      }}
+    >
+      <Text variant="label" style={{ color: colors.onPrimary }}>
+        Descanso terminado
+      </Text>
+      <Text variant="caption" style={{ color: colors.onPrimary }}>
+        Es hora de la siguiente serie.
+      </Text>
+    </Pressable>
   );
 }

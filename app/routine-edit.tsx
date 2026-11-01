@@ -2,12 +2,19 @@ import { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ExercisePicker } from '../src/components/exercise-picker';
+import { ReorderSheet } from '../src/components/reorder-sheet';
 import { Button, Card, ChipSingle, ErrorText, LinkButton, Screen, Text, TextField } from '../src/components/ui';
 import { WEEKDAY_LONG } from '../src/lib/labels';
-import { draftToInput, validateDraft, type DraftDay, type DraftItem, type RoutineDraft } from '../src/lib/routine-draft';
+import { DEFAULT_REPS_FIELDS, draftToInput, repsFields, validateDraft, type DraftDay, type DraftItem, type RepsMode, type RoutineDraft } from '../src/lib/routine-draft';
+import { orderByKeys } from '../src/lib/plan';
 import { syncReminders } from '../src/lib/notifications';
 import { getRoutine, saveRoutine, type Exercise } from '../src/lib/training';
 import { spacing } from '../src/theme';
+
+const REPS_MODE_OPTIONS: { key: RepsMode; label: string }[] = [
+  { key: 'fixed', label: 'Repeticiones fijas' },
+  { key: 'range', label: 'Rango' },
+];
 
 const WEEKDAY_OPTIONS = [
   { key: '0', label: 'Sin día fijo' },
@@ -28,6 +35,7 @@ export default function RoutineEdit() {
     days: [{ name: 'Día 1', weekday: 0, items: [] }],
   });
   const [pickerDay, setPickerDay] = useState<number | null>(null);
+  const [reorderDay, setReorderDay] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -49,7 +57,7 @@ export default function RoutineEdit() {
                 key: nextKey(),
                 exercise: e.exercises!,
                 sets: String(e.sets),
-                reps: String(e.reps_target),
+                ...repsFields(e.reps_min ?? e.reps_target, e.reps_max ?? e.reps_target),
                 rest: String(e.rest_seconds),
                 notes: e.notes,
               })),
@@ -93,7 +101,7 @@ export default function RoutineEdit() {
     setDay(pickerDay, {
       items: [
         ...day.items,
-        { key: nextKey(), exercise: e, sets: '3', reps: '10', rest: '90', notes: '' },
+        { key: nextKey(), exercise: e, sets: '3', ...DEFAULT_REPS_FIELDS, rest: '90', notes: '' },
       ],
     });
     setPickerDay(null);
@@ -159,17 +167,38 @@ export default function RoutineEdit() {
           {day.items.map((it, ii) => (
             <View key={it.key} style={{ gap: spacing.sm, paddingTop: spacing.md }}>
               <Text variant="label">{it.exercise.name}</Text>
+              <ChipSingle
+                options={REPS_MODE_OPTIONS}
+                value={it.repsMode}
+                onChange={(k) => setItem(di, ii, { repsMode: k ?? 'fixed' })}
+              />
               <View style={{ flexDirection: 'row', gap: spacing.sm }}>
                 <View style={{ flex: 1, minWidth: 0 }}>
                   <TextField label="Series" keyboardType="number-pad" value={it.sets} onChangeText={(t) => setItem(di, ii, { sets: t })} />
                 </View>
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <TextField label="Reps" keyboardType="number-pad" value={it.reps} onChangeText={(t) => setItem(di, ii, { reps: t })} />
-                </View>
+                {it.repsMode === 'range' ? (
+                  <>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <TextField label="Reps mín." keyboardType="number-pad" value={it.repsMin} onChangeText={(t) => setItem(di, ii, { repsMin: t })} />
+                    </View>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <TextField label="Reps máx." keyboardType="number-pad" value={it.repsMax} onChangeText={(t) => setItem(di, ii, { repsMax: t })} />
+                    </View>
+                  </>
+                ) : (
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <TextField label="Reps" keyboardType="number-pad" value={it.reps} onChangeText={(t) => setItem(di, ii, { reps: t })} />
+                  </View>
+                )}
                 <View style={{ flex: 1, minWidth: 0 }}>
                   <TextField label="Desc. (s)" keyboardType="number-pad" value={it.rest} onChangeText={(t) => setItem(di, ii, { rest: t })} />
                 </View>
               </View>
+              {it.repsMode === 'range' ? (
+                <Text variant="caption" muted>
+                  Subirás de carga cuando todas las series normales lleguen al máximo del rango.
+                </Text>
+              ) : null}
               <TextField label="Notas" value={it.notes} onChangeText={(t) => setItem(di, ii, { notes: t })} maxLength={500} />
               <View style={{ flexDirection: 'row', gap: spacing.lg }}>
                 <LinkButton title="Subir" disabled={ii === 0} onPress={() => moveItem(di, ii, -1)} />
@@ -180,6 +209,7 @@ export default function RoutineEdit() {
           ))}
 
           <Button title="Añadir ejercicio" variant="secondary" onPress={() => setPickerDay(di)} />
+          {day.items.length > 1 ? <Button title="Reordenar ejercicios" variant="ghost" onPress={() => setReorderDay(di)} /> : null}
           {draft.days.length > 1 ? <LinkButton title="Eliminar este día" danger onPress={() => removeDay(di)} /> : null}
         </Card>
       ))}
@@ -191,6 +221,18 @@ export default function RoutineEdit() {
       <Button title="Cancelar" variant="ghost" onPress={() => router.back()} />
 
       <ExercisePicker visible={pickerDay !== null} onClose={() => setPickerDay(null)} onPick={addExercise} />
+
+      <ReorderSheet
+        visible={reorderDay !== null}
+        title="Reordenar ejercicios"
+        subtitle="Arrastra el asa de la derecha para cambiar el orden."
+        items={reorderDay === null ? [] : draft.days[reorderDay].items.map((it) => ({ key: it.key, label: it.exercise.name }))}
+        onClose={() => setReorderDay(null)}
+        onApply={(keys) => {
+          if (reorderDay === null) return;
+          setDay(reorderDay, { items: orderByKeys(draft.days[reorderDay].items, (it) => it.key, keys) });
+        }}
+      />
     </Screen>
   );
 }

@@ -1,5 +1,7 @@
 import { supabase } from './supabase';
 import type { Equipment, MuscleGroup } from './labels';
+import { effectiveOrder, withSlots } from './plan';
+import type { SetType } from './training-math';
 
 export interface Exercise {
   id: string;
@@ -25,7 +27,10 @@ export interface RoutineExercise {
   day_index: number;
   position: number;
   sets: number;
+  /** Máximo del rango (o el número fijo). */
   reps_target: number;
+  reps_min: number;
+  reps_max: number;
   rest_seconds: number;
   notes: string;
   exercises: Pick<Exercise, 'id' | 'name' | 'muscle_group' | 'equipment'> | null;
@@ -35,10 +40,17 @@ export interface PlanItem {
   exercise_id: string;
   name: string;
   muscle_group: MuscleGroup;
+  /** Series normales previstas (las de aproximación y los dropsets se añaden durante la sesión). */
   sets: number;
+  /** Máximo del rango (o el número fijo). */
   reps_target: number;
+  /** Rango de repeticiones; ausentes en sesiones anteriores, donde el objetivo era fijo (reps_target). */
+  reps_min?: number;
+  reps_max?: number;
   rest_seconds: number;
   notes: string;
+  /** Identidad estable del ejercicio en la sesión (las series se guardan con `position` = slot). Ausente en sesiones antiguas: es el índice. */
+  slot?: number;
 }
 
 export interface Session {
@@ -55,12 +67,17 @@ export interface SessionSet {
   id: string;
   session_id: string;
   exercise_id: string;
+  /** Slot del ejercicio dentro de la sesión. */
   position: number;
+  /** Identidad de la serie dentro de su ejercicio (no cambia al reordenar). */
   set_index: number;
   weight_kg: number;
   reps: number;
   rpe: number | null;
   target_reps: number | null;
+  set_type: SetType;
+  /** Orden en pantalla dentro del ejercicio; null en series antiguas (se usa set_index). */
+  sort_order: number | null;
   created_at: string;
 }
 
@@ -72,8 +89,17 @@ function check<T>(res: { data: T | null; error: { message: string } | null }): T
 const num = (v: unknown) => Number(v);
 
 function normalizeSet(s: SessionSet): SessionSet {
-  return { ...s, weight_kg: num(s.weight_kg), rpe: s.rpe == null ? null : num(s.rpe) };
+  return {
+    ...s,
+    weight_kg: num(s.weight_kg),
+    rpe: s.rpe == null ? null : num(s.rpe),
+    set_type: s.set_type ?? 'normal',
+    sort_order: s.sort_order ?? null,
+  };
 }
+
+/** Series de un mismo ejercicio en el orden en que se muestran. */
+export const bySetOrder = (a: SessionSet, b: SessionSet) => effectiveOrder(a) - effectiveOrder(b) || a.set_index - b.set_index;
 
 // ---------- Ejercicios ----------
 
@@ -105,7 +131,7 @@ export async function getRoutine(id: string): Promise<Routine | null> {
   const { data, error } = await supabase
     .from('routines')
     .select(
-      '*, routine_exercises(id, exercise_id, day_index, position, sets, reps_target, rest_seconds, notes, exercises(id, name, muscle_group, equipment))',
+      '*, routine_exercises(id, exercise_id, day_index, position, sets, reps_target, reps_min, reps_max, rest_seconds, notes, exercises(id, name, muscle_group, equipment))',
     )
     .eq('id', id)
     .maybeSingle();
@@ -130,6 +156,8 @@ export interface RoutineInput {
     position: number;
     sets: number;
     reps_target: number;
+    reps_min: number;
+    reps_max: number;
     rest_seconds: number;
     notes: string;
   }[];
@@ -157,14 +185,17 @@ export function planForDay(routine: Routine, dayIndex: number): PlanItem[] {
   return (routine.routine_exercises ?? [])
     .filter((e) => e.day_index === dayIndex && e.exercises)
     .sort((a, b) => a.position - b.position)
-    .map((e) => ({
+    .map((e, i) => ({
       exercise_id: e.exercise_id,
       name: e.exercises!.name,
       muscle_group: e.exercises!.muscle_group,
       sets: e.sets,
-      reps_target: e.reps_target,
+      reps_target: e.reps_max ?? e.reps_target,
+      reps_min: e.reps_min ?? e.reps_target,
+      reps_max: e.reps_max ?? e.reps_target,
       rest_seconds: e.rest_seconds,
       notes: e.notes,
+      slot: i,
     }));
 }
 
@@ -186,10 +217,13 @@ export async function startSession(
   return row.id;
 }
 
+/** Asigna `slot` a los ejercicios de sesiones anteriores a la posibilidad de reordenar. */
+const withSessionSlots = (s: Session): Session => ({ ...s, plan: withSlots(s.plan ?? []) });
+
 export async function getSession(id: string): Promise<Session | null> {
   const { data, error } = await supabase.from('workout_sessions').select('*').eq('id', id).maybeSingle();
   if (error) throw new Error(error.message);
-  return data as Session | null;
+  return data ? withSessionSlots(data as Session) : null;
 }
 
 export async function getActiveSession(): Promise<Session | null> {
@@ -201,7 +235,7 @@ export async function getActiveSession(): Promise<Session | null> {
     .limit(1)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  return data as Session | null;
+  return data ? withSessionSlots(data as Session) : null;
 }
 
 export async function updateSessionPlan(id: string, plan: PlanItem[]) {
@@ -235,7 +269,7 @@ export async function listFinishedSessions(limit = 40): Promise<{ session: Sessi
   const sets = (
     check(await supabase.from('workout_sets').select('*').in('session_id', sessions.map((s) => s.id))) as SessionSet[]
   ).map(normalizeSet);
-  return sessions.map((session) => ({ session, sets: sets.filter((s) => s.session_id === session.id) }));
+  return sessions.map((session) => ({ session: { ...session, plan: withSlots(session.plan) }, sets: sets.filter((s) => s.session_id === session.id).sort(bySetOrder) }));
 }
 
 // ---------- Series ----------
@@ -249,7 +283,7 @@ export async function getSessionSets(sessionId: string): Promise<SessionSet[]> {
       .order('position')
       .order('set_index'),
   ) as SessionSet[];
-  return rows.map(normalizeSet);
+  return rows.map(normalizeSet).sort((a, b) => a.position - b.position || bySetOrder(a, b));
 }
 
 export interface SetInput {
@@ -262,6 +296,8 @@ export interface SetInput {
   reps: number;
   rpe: number | null;
   target_reps: number | null;
+  set_type: SetType;
+  sort_order: number;
 }
 
 /** Idempotente: repetir la misma serie la actualiza en lugar de duplicarla. */
@@ -281,6 +317,14 @@ export async function deleteSet(id: string) {
   if (error) throw new Error(error.message);
 }
 
+/** Actualiza el orden en pantalla de series ya guardadas (tras insertar o borrar una serie intermedia). */
+export async function updateSetOrders(updates: { dbId: string; sortOrder: number }[]) {
+  for (const u of updates) {
+    const { error } = await supabase.from('workout_sets').update({ sort_order: u.sortOrder }).eq('id', u.dbId);
+    if (error) throw new Error(error.message);
+  }
+}
+
 /** Series de la última sesión terminada (distinta de la actual) de cada ejercicio. */
 export async function getPreviousSets(
   exerciseIds: string[],
@@ -293,6 +337,7 @@ export async function getPreviousSets(
         .from('workout_sets')
         .select('*, workout_sessions!inner(finished_at)')
         .in('exercise_id', exerciseIds)
+        .eq('set_type', 'normal')
         .neq('session_id', excludeSessionId)
         .not('workout_sessions.finished_at', 'is', null)
         .order('created_at', { ascending: false })
@@ -306,7 +351,7 @@ export async function getPreviousSets(
     if (!entry) result[r.exercise_id] = { date: r.finished_at, sets: [r] };
     else if (entry.sets[0].session_id === r.session_id) entry.sets.push(r);
   }
-  for (const e of Object.values(result)) e.sets.sort((a, b) => a.set_index - b.set_index);
+  for (const e of Object.values(result)) e.sets.sort(bySetOrder);
   return result;
 }
 
@@ -315,10 +360,11 @@ export async function getSetsSince(since: Date) {
   const rows = check(
     await supabase
       .from('workout_sets')
-      .select('weight_kg, reps, exercises(muscle_group)')
+      .select('weight_kg, reps, set_type, exercises(muscle_group)')
+      .neq('set_type', 'warmup')
       .gte('created_at', since.toISOString()),
-  ) as unknown as { weight_kg: number; reps: number; exercises: { muscle_group: string } | null }[];
+  ) as unknown as { weight_kg: number; reps: number; set_type: SetType; exercises: { muscle_group: string } | null }[];
   return rows
     .filter((r) => r.exercises)
-    .map((r) => ({ muscleGroup: r.exercises!.muscle_group, weightKg: num(r.weight_kg), reps: r.reps }));
+    .map((r) => ({ muscleGroup: r.exercises!.muscle_group, weightKg: num(r.weight_kg), reps: r.reps, type: r.set_type }));
 }

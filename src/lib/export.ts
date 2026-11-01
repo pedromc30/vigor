@@ -47,12 +47,12 @@ export async function loadTable(key: DatasetKey): Promise<Table> {
     case 'entrenos': {
       const [sessions, sets] = await Promise.all([
         all<Parameters<typeof workoutsTable>[0][number]>('workout_sessions', 'id, routine_name, started_at, finished_at, plan'),
-        all<Parameters<typeof workoutsTable>[1][number]>('workout_sets', 'session_id, position, set_index, weight_kg, reps, rpe, target_reps'),
+        all<Parameters<typeof workoutsTable>[1][number]>('workout_sets', 'session_id, position, set_index, weight_kg, reps, rpe, target_reps, set_type, sort_order'),
       ]);
       return workoutsTable(sessions, sets.map((s) => ({ ...s, weight_kg: Number(s.weight_kg), rpe: s.rpe == null ? null : Number(s.rpe) })));
     }
     case 'rutinas':
-      return routinesTable(await all('routines', '*, routine_exercises(day_index, position, sets, reps_target, rest_seconds, notes, exercises(name))'));
+      return routinesTable(await all('routines', '*, routine_exercises(day_index, position, sets, reps_target, reps_min, reps_max, rest_seconds, notes, exercises(name))'));
     case 'diario':
       return dietTable(await all('meal_logs', 'log_date, meal, name, quantity_g, servings, kcal, protein_g, carbs_g, fat_g'));
     case 'agua':

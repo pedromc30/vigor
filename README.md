@@ -37,6 +37,15 @@ App móvil (Expo + React Native + TypeScript, backend Supabase) que combina entr
 - 1RM con Epley (solo series de hasta 12 repeticiones). Progresión: si se completan todas las series con las repeticiones objetivo, se sugiere +2,5 kg (`PROGRESSION_STEP_KG`).
 - Historial de sesiones y volumen semanal (series y kg) por grupo muscular, de lunes a domingo.
 
+### Mejoras del entreno (migración `0006_training_improvements.sql`)
+
+- **Repeticiones fijas o en rango** por ejercicio de rutina (`3 × 8` o `3 × 6–8`): se guardan `reps_min` y `reps_max` (fijo = ambos iguales); `reps_target` se mantiene como el máximo para no romper la versión anterior de la app ni las exportaciones. **Doble progresión:** se sugiere subir carga (+2,5 kg) cuando todas las series *normales* llegan al máximo del rango (en modo fijo, al número fijo).
+- **Tipos de serie:** normal, aproximación (`A`) y dropset (`D`) en `workout_sets.set_type`. La aproximación **no cuenta** para el volumen (semanal, de sesión e historial), el 1RM, la progresión ni la gráfica de cargas. Los dropsets cuentan en volumen y 1RM, pero no en la progresión (que solo mira las series normales). Las series se pueden borrar (con confirmación si ya están registradas). Los tipos de serie no forman parte de la plantilla de la rutina: se añaden durante la sesión.
+- **Orden de las series:** `set_index` es la identidad de la serie y no cambia; `sort_order` es su orden en pantalla, así se pueden insertar series intermedias. En series antiguas (sin `sort_order`) manda `set_index`.
+- **Reordenar ejercicios** arrastrando el asa de cada fila, en el editor de rutinas (`routine_exercises.position`) y en la sesión en vivo. En la sesión el orden vive en `workout_sessions.plan` (una lista ordenada) y solo afecta a esa sesión; las series se guardan con `position` = `slot` del ejercicio (identificador estable que se asigna al reordenar), de modo que cambiar el orden no toca las series ya registradas.
+- **RPE** con desplegable de 1 a 10 (más «Sin RPE»). Los valores antiguos con decimales se siguen mostrando tal cual en las series ya registradas.
+- **Aviso de fin de descanso:** al empezar el descanso se programa una notificación local para su hora de fin (se cancela y se reprograma al saltar, alargar o acortar). Con la app abierta no sale la notificación: la pantalla vibra y muestra un aviso. Pide el permiso de notificaciones la primera vez que se usa el temporizador. **Requiere una build de EAS** (no funciona en Expo Go para Android, igual que los recordatorios).
+
 ## Dieta (Fase 3)
 
 - Diario por comidas (desayuno, comida, merienda, cena, snacks) con barras de kcal, proteína, carbohidratos, grasa y agua frente a tus objetivos. Cada entrada guarda una copia de los macros del momento: editar o borrar un alimento después no cambia el historial.

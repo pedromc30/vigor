@@ -42,7 +42,24 @@ export async function trainingWeekdays(): Promise<number[]> {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const notifications = () => require('expo-notifications') as typeof import('expo-notifications');
+export const notifications = () => require('expo-notifications') as typeof import('expo-notifications');
+
+/** Valor de `data.kind` de los avisos de fin de descanso. */
+export const REST_KIND = 'rest-end';
+
+/**
+ * Cómo se muestran los avisos con la app abierta. Los recordatorios salen como banner; el de fin de descanso no:
+ * en ese caso la propia pantalla del entreno avisa (vibración y mensaje) y la notificación solo aporta el sonido.
+ */
+export function installNotificationHandler(): void {
+  const N = notifications();
+  N.setNotificationHandler({
+    handleNotification: async (n) =>
+      n.request.content.data?.kind === REST_KIND
+        ? { shouldPlaySound: true, shouldSetBadge: false, shouldShowBanner: false, shouldShowList: false }
+        : { shouldPlaySound: false, shouldSetBadge: false, shouldShowBanner: true, shouldShowList: true },
+  });
+}
 
 export type ApplyResult = { ok: true; count: number } | { ok: false; reason: 'unsupported' | 'denied' | 'error' };
 
@@ -59,9 +76,7 @@ export async function scheduleReminders(list: PlannedReminder[]): Promise<ApplyR
     if (Platform.OS === 'android') {
       await N.setNotificationChannelAsync(CHANNEL, { name: 'Recordatorios', importance: N.AndroidImportance.DEFAULT });
     }
-    N.setNotificationHandler({
-      handleNotification: async () => ({ shouldPlaySound: false, shouldSetBadge: false, shouldShowBanner: true, shouldShowList: true }),
-    });
+    installNotificationHandler();
     await N.cancelAllScheduledNotificationsAsync();
     for (const r of list) {
       await N.scheduleNotificationAsync({
@@ -97,9 +112,7 @@ export async function sendTestNotification(): Promise<ApplyResult> {
     if (Platform.OS === 'android') {
       await N.setNotificationChannelAsync(CHANNEL, { name: 'Recordatorios', importance: N.AndroidImportance.DEFAULT });
     }
-    N.setNotificationHandler({
-      handleNotification: async () => ({ shouldPlaySound: false, shouldSetBadge: false, shouldShowBanner: true, shouldShowList: true }),
-    });
+    installNotificationHandler();
     await N.scheduleNotificationAsync({
       content: { title: 'Vigor', body: 'Así se verán tus recordatorios.' },
       trigger: { type: N.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 5, channelId: CHANNEL },

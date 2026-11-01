@@ -15,7 +15,8 @@ export default function History() {
       <ErrorText>{error}</ErrorText>
       {loading ? <Text muted>Cargando…</Text> : null}
       {data && !data.length ? <Text muted>Todavía no has terminado ninguna sesión.</Text> : null}
-      {data?.map(({ session, sets }) => {
+      {data?.map(({ session, sets: allSets }) => {
+        const sets = allSets.filter((s) => s.set_type !== 'warmup'); // la aproximación no cuenta
         const volume = sets.reduce((sum, s) => sum + setVolume({ weightKg: s.weight_kg, reps: s.reps }), 0);
         const seconds = (new Date(session.finished_at!).getTime() - new Date(session.started_at).getTime()) / 1000;
         return (

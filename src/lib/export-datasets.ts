@@ -1,5 +1,6 @@
 // Conversión de los datos del usuario a tablas (cabeceras + filas) para exportarlos a CSV.
 import type { Cell } from './csv';
+import { effectiveOrder, itemForPosition } from './plan';
 
 export interface Table {
   filename: string;
@@ -23,7 +24,7 @@ export interface SessionRow {
   routine_name: string;
   started_at: string;
   finished_at: string | null;
-  plan: { name: string; muscle_group: string }[];
+  plan: { name: string; muscle_group: string; slot?: number }[];
 }
 export interface SetRow {
   session_id: string;
@@ -33,18 +34,39 @@ export interface SetRow {
   reps: number;
   rpe: number | null;
   target_reps: number | null;
+  set_type?: string;
+  sort_order?: number | null;
 }
+
+const SET_TYPE_LABELS: Record<string, string> = { normal: 'normal', warmup: 'aproximacion', dropset: 'dropset' };
 
 export function workoutsTable(sessions: SessionRow[], sets: SetRow[]): Table {
   const byId = new Map(sessions.map((s) => [s.id, s]));
-  const rows = [...sets]
-    .sort((a, b) => (byId.get(a.session_id)?.started_at ?? '').localeCompare(byId.get(b.session_id)?.started_at ?? '') || a.position - b.position || a.set_index - b.set_index)
-    .map((s) => {
-      const session = byId.get(s.session_id);
-      const ex = session?.plan?.[s.position];
-      return [date(session?.started_at), session?.routine_name ?? '', ex?.name ?? '', ex?.muscle_group ?? '', s.set_index + 1, s.weight_kg, s.reps, s.rpe, s.target_reps, session?.finished_at ? 'sí' : 'no'] as Cell[];
-    });
-  return { filename: 'entrenos', headers: ['fecha', 'sesion', 'ejercicio', 'grupo_muscular', 'serie', 'peso_kg', 'repeticiones', 'rpe', 'repeticiones_objetivo', 'sesion_terminada'], rows };
+  const planIndex = (s: SetRow) => {
+    const plan = byId.get(s.session_id)?.plan ?? [];
+    const i = plan.findIndex((p, k) => (p.slot ?? k) === s.position);
+    return i === -1 ? Number.MAX_SAFE_INTEGER : i;
+  };
+  // Orden: sesión (fecha), ejercicio (orden del plan de esa sesión) y serie (orden en pantalla).
+  const sorted = [...sets].sort(
+    (a, b) =>
+      (byId.get(a.session_id)?.started_at ?? '').localeCompare(byId.get(b.session_id)?.started_at ?? '') ||
+      a.session_id.localeCompare(b.session_id) ||
+      planIndex(a) - planIndex(b) ||
+      a.position - b.position ||
+      effectiveOrder(a) - effectiveOrder(b) ||
+      a.set_index - b.set_index,
+  );
+  const counter = new Map<string, number>();
+  const rows = sorted.map((s) => {
+    const session = byId.get(s.session_id);
+    const ex = session?.plan ? itemForPosition(session.plan, s.position) : undefined;
+    const key = `${s.session_id}|${s.position}`;
+    const n = (counter.get(key) ?? 0) + 1;
+    counter.set(key, n);
+    return [date(session?.started_at), session?.routine_name ?? '', ex?.name ?? '', ex?.muscle_group ?? '', n, s.weight_kg, s.reps, s.rpe, s.target_reps, session?.finished_at ? 'sí' : 'no', SET_TYPE_LABELS[s.set_type ?? 'normal'] ?? 'normal'] as Cell[];
+  });
+  return { filename: 'entrenos', headers: ['fecha', 'sesion', 'ejercicio', 'grupo_muscular', 'serie', 'peso_kg', 'repeticiones', 'rpe', 'repeticiones_objetivo', 'sesion_terminada', 'tipo_serie'], rows };
 }
 
 export interface RoutineRow {
@@ -52,7 +74,7 @@ export interface RoutineRow {
   notes: string;
   day_names: string[];
   schedule: number[];
-  routine_exercises: { day_index: number; position: number; sets: number; reps_target: number; rest_seconds: number; notes: string; exercises: { name: string } | null }[];
+  routine_exercises: { day_index: number; position: number; sets: number; reps_target: number; reps_min?: number; reps_max?: number; rest_seconds: number; notes: string; exercises: { name: string } | null }[];
 }
 
 const WEEKDAYS = ['', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'];
@@ -61,9 +83,9 @@ export function routinesTable(routines: RoutineRow[]): Table {
   const rows = routines.flatMap((r) =>
     [...r.routine_exercises]
       .sort((a, b) => a.day_index - b.day_index || a.position - b.position)
-      .map((e) => [r.name, r.day_names[e.day_index] ?? '', WEEKDAYS[r.schedule[e.day_index] ?? 0] ?? '', e.exercises?.name ?? '', e.sets, e.reps_target, e.rest_seconds, e.notes] as Cell[]),
+      .map((e) => [r.name, r.day_names[e.day_index] ?? '', WEEKDAYS[r.schedule[e.day_index] ?? 0] ?? '', e.exercises?.name ?? '', e.sets, e.reps_target, e.rest_seconds, e.notes, e.reps_min ?? e.reps_target, e.reps_max ?? e.reps_target] as Cell[]),
   );
-  return { filename: 'rutinas', headers: ['rutina', 'dia', 'dia_semana', 'ejercicio', 'series', 'repeticiones_objetivo', 'descanso_s', 'notas'], rows };
+  return { filename: 'rutinas', headers: ['rutina', 'dia', 'dia_semana', 'ejercicio', 'series', 'repeticiones_objetivo', 'descanso_s', 'notas', 'repeticiones_min', 'repeticiones_max'], rows };
 }
 
 interface Entry {

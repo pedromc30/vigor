@@ -1,4 +1,5 @@
 import {
+  isNormalSet,
   bestEstimated1RM,
   epley1RM,
   formatClock,
@@ -116,5 +117,60 @@ describe('formato', () => {
   it('formatClock', () => {
     expect(formatClock(95)).toBe('1:35');
     expect(formatClock(-3)).toBe('0:00');
+  });
+});
+
+
+describe('series de aproximación y dropsets', () => {
+  const w = (weightKg: number, reps: number, type?: 'normal' | 'warmup' | 'dropset') => ({ weightKg, reps, type });
+
+  it('isNormalSet: sin tipo es normal', () => {
+    expect(isNormalSet({})).toBe(true);
+    expect(isNormalSet({ type: 'normal' })).toBe(true);
+    expect(isNormalSet({ type: 'warmup' })).toBe(false);
+    expect(isNormalSet({ type: 'dropset' })).toBe(false);
+  });
+
+  it('el 1RM ignora las series de aproximación', () => {
+    // Una aproximación ligera con pocas repeticiones no cambia el resultado; una pesada tampoco debe contar.
+    expect(bestEstimated1RM([w(60, 8, 'normal'), w(200, 1, 'warmup')])).toBeCloseTo(epley1RM(60, 8), 5);
+    expect(bestEstimated1RM([w(200, 1, 'warmup')])).toBeNull();
+  });
+
+  it('el 1RM sí cuenta los dropsets', () => {
+    expect(bestEstimated1RM([w(100, 5, 'normal'), w(80, 8, 'dropset')])).toBeCloseTo(epley1RM(100, 5), 5);
+  });
+
+  it('el volumen semanal no cuenta la aproximación ni sus series', () => {
+    const v = volumeByMuscleGroup([
+      { muscleGroup: 'pecho', weightKg: 100, reps: 5, type: 'normal' },
+      { muscleGroup: 'pecho', weightKg: 40, reps: 10, type: 'warmup' },
+      { muscleGroup: 'pecho', weightKg: 80, reps: 8, type: 'dropset' },
+      { muscleGroup: 'espalda', weightKg: 30, reps: 10, type: 'warmup' },
+    ]);
+    expect(v).toEqual([{ muscleGroup: 'pecho', sets: 2, volumeKg: 500 + 640 }]);
+  });
+
+  it('la progresión solo mira las series normales', () => {
+    const normals = [w(60, 8), w(60, 8), w(60, 8)];
+    // las aproximaciones y los dropsets no cuentan como series normales ni hacen subir la carga por sí solos
+    expect(targetsMet([...normals.slice(0, 2), w(60, 8, 'warmup'), w(60, 8, 'dropset')], 3, 8)).toBe(false);
+    expect(targetsMet([...normals, w(20, 3, 'warmup')], 3, 8)).toBe(true);
+    // la mayor carga que cuenta no sale de una aproximación o dropset
+    expect(suggestNextWeight([...normals, w(100, 12, 'warmup'), w(90, 12, 'dropset')], 3, 8)).toBe(62.5);
+  });
+});
+
+describe('doble progresión (rango de repeticiones)', () => {
+  const s = (reps: number[], w = 60) => reps.map((r) => ({ weightKg: w, reps: r }));
+  // En un rango 6–8 el objetivo de progresión es el máximo (8) en todas las series normales.
+  it('sube carga solo cuando todas las series normales llegan al máximo', () => {
+    expect(suggestNextWeight(s([8, 8, 8]), 3, 8)).toBe(62.5);
+    expect(suggestNextWeight(s([8, 7, 8]), 3, 8)).toBeNull();
+    expect(suggestNextWeight(s([6, 6, 6]), 3, 8)).toBeNull();
+  });
+  it('en modo fijo (mínimo = máximo) funciona igual con ese número', () => {
+    expect(suggestNextWeight(s([10, 10, 10]), 3, 10)).toBe(62.5);
+    expect(suggestNextWeight(s([10, 10, 9]), 3, 10)).toBeNull();
   });
 });
