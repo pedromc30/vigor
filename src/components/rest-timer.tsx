@@ -20,7 +20,10 @@ export function RestBar({
 }: {
   rest: RestState;
   onChange: (next: RestState | null) => void;
-  /** Se llama una vez cuando el descanso termina con la app abierta (no si se vuelve mucho después). */
+  /**
+   * Se llama (en lugar de `onChange(null)`) cuando el descanso termina solo y a su hora, para que quien lo use pueda
+   * distinguirlo de «Saltar». No se llama si se vuelve a la app mucho después de terminar.
+   */
   onFinished?: () => void;
 }) {
   const { colors } = useTheme();
@@ -37,11 +40,12 @@ export function RestBar({
   useEffect(() => {
     if (remaining <= 0) {
       // Si se vuelve a la app mucho después de terminar, el aviso del sistema ya cumplió: no se repite aquí.
-      if (-remaining < LATE_SECONDS) {
+      if (-remaining < LATE_SECONDS && onFinished) {
         Vibration.vibrate([0, 400, 150, 400]);
-        onFinished?.();
+        onFinished();
+      } else {
+        onChange(null);
       }
-      onChange(null);
     }
   }, [remaining, onChange, onFinished]);
 

@@ -143,8 +143,15 @@ export default function Workout() {
   }, [id, newRowId]);
 
   // El aviso del sistema de fin de descanso sigue siempre al temporizador: se reprograma al iniciar, alargar, acortar o saltar.
+  // Si el descanso termina solo no se cancela el aviso: con la app en segundo plano el temporizador de la pantalla
+  // puede llegar a cero a la vez que el sistema y, si cancelara, el aviso nunca saldría.
   const restEndsAt = rest?.endsAt ?? null;
+  const restEndedOnItsOwn = useRef(false);
   useEffect(() => {
+    if (restEndsAt === null && restEndedOnItsOwn.current) {
+      restEndedOnItsOwn.current = false;
+      return;
+    }
     void syncRestNotification(restEndsAt);
   }, [restEndsAt]);
   useEffect(() => () => void syncRestNotification(null), []);
@@ -374,7 +381,11 @@ export default function Workout() {
   };
 
   const onRestChange = useCallback((next: RestState | null) => setRest(next), []);
-  const onRestFinished = useCallback(() => setRestDone(true), []);
+  const onRestFinished = useCallback(() => {
+    restEndedOnItsOwn.current = true;
+    setRest(null);
+    setRestDone(true);
+  }, []);
   const hideRestDone = useCallback(() => setRestDone(false), []);
 
   if (loadError) {
