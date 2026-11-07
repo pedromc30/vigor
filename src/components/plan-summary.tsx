@@ -3,6 +3,7 @@ import type { NutritionPlan } from '../lib/nutrition';
 import { Card, Text } from './ui';
 import { spacing, useTheme } from '../theme';
 
+/** Tres cifras en columna: el número en tinta y el nombre apagado debajo; un punto de color da la pista sin pintarlo todo. */
 export function MacroRow({ proteinG, fatG, carbsG }: { proteinG: number; fatG: number; carbsG: number }) {
   const { colors } = useTheme();
   const items = [
@@ -14,12 +15,15 @@ export function MacroRow({ proteinG, fatG, carbsG }: { proteinG: number; fatG: n
     <View style={{ flexDirection: 'row', gap: spacing.md }}>
       {items.map((i) => (
         <View key={i.label} style={{ flex: 1, gap: 2 }}>
-          <Text variant="heading" style={{ color: i.color }}>
+          <Text variant="heading" style={{ fontWeight: '500' }}>
             {String(i.value).replace('.', ',')} g
           </Text>
-          <Text variant="caption" muted>
-            {i.label}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: i.color }} />
+            <Text variant="caption" muted numberOfLines={1} style={{ flexShrink: 1 }}>
+              {i.label}
+            </Text>
+          </View>
         </View>
       ))}
     </View>

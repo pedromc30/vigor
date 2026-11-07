@@ -3,7 +3,7 @@ import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { CopyMealModal, SaveFavoriteModal } from '../../src/components/meal-modals';
 import { QuantitySheet } from '../../src/components/quantity-sheet';
-import { Button, Card, ErrorText, LinkButton, Screen, Text } from '../../src/components/ui';
+import { Button, Card, ErrorText, LinkButton, LinkRow, Screen, Text } from '../../src/components/ui';
 import { addWater, deleteLog, getLogs, getWaterMl, undoWater, updateLog, type LogEntry } from '../../src/lib/diet';
 import {
   MEALS,
@@ -109,10 +109,14 @@ export default function Dieta() {
         <Text variant="caption" muted>
           Calorías
         </Text>
-        <Text variant="title">
-          {Math.round(total.kcal)}
-          <Text muted> / {kcalTarget ?? '—'} kcal</Text>
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm }}>
+          <Text variant="display" style={{ fontSize: 48, lineHeight: 54, fontVariant: ['tabular-nums'] }}>
+            {Math.round(total.kcal)}
+          </Text>
+          <Text variant="heading" muted style={{ fontWeight: '400' }}>
+            / {kcalTarget ?? '—'} kcal
+          </Text>
+        </View>
         <Bar value={progress(total.kcal, kcalTarget)} color={colors.primary} over={remaining != null && remaining < 0} />
         {remaining != null ? (
           <Text variant="caption" style={{ color: remaining < 0 ? colors.danger : colors.textMuted }}>
@@ -130,17 +134,11 @@ export default function Dieta() {
         <Text variant="caption" muted>
           {formatMl(water)} de {formatMl(waterGoal)}
         </Text>
-        <View style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'center' }}>
-          <View style={{ flex: 1 }}>
-            <Button title="+ 250 ml" variant="secondary" onPress={() => void drink(250)} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Button title="+ 500 ml" variant="secondary" onPress={() => void drink(500)} />
-          </View>
+        <View style={{ flexDirection: 'row', gap: spacing.xl, alignItems: 'center' }}>
+          <LinkButton title="+ 250 ml" onPress={() => void drink(250)} />
+          <LinkButton title="+ 500 ml" onPress={() => void drink(500)} />
+          {water > 0 ? <LinkButton title="Deshacer el último" onPress={() => void run(() => undoWater(date), 'No se pudo deshacer.')} /> : null}
         </View>
-        {water > 0 ? (
-          <LinkButton title="Deshacer el último" onPress={() => void run(() => undoWater(date), 'No se pudo deshacer.')} />
-        ) : null}
       </Card>
 
       {loading ? <Text muted>Cargando…</Text> : null}
@@ -191,8 +189,10 @@ export default function Dieta() {
         );
       })}
 
-      <Button title="Planificador semanal" variant="secondary" onPress={() => router.push('/plan')} />
-      <Button title="Archivos de dieta" variant="secondary" onPress={() => router.push('/diet-files')} />
+      <View>
+        <LinkRow title="Planificador semanal" onPress={() => router.push('/plan')} />
+        <LinkRow title="Archivos de dieta" onPress={() => router.push('/diet-files')} />
+      </View>
       <View style={{ flexDirection: 'row', gap: spacing.sm }}>
         <View style={{ flex: 1 }}>
           <Button title="Nuevo alimento" variant="secondary" onPress={() => router.push('/food-create')} />

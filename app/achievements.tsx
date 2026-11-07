@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Button, Card, ErrorText, LinkButton, Screen, Text } from '../src/components/ui';
@@ -24,7 +24,7 @@ import { getExerciseSets } from '../src/lib/progress';
 import { listExercises } from '../src/lib/training';
 import { useFocusData } from '../src/lib/use-focus-data';
 import { useAuth } from '../src/providers/AuthProvider';
-import { radius, spacing, useTheme } from '../src/theme';
+import { spacing, useTheme } from '../src/theme';
 
 const dateLabel = (iso: string) => fromISODate(iso.slice(0, 10)).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
 
@@ -118,11 +118,9 @@ export default function Achievements() {
               flexDirection: 'row',
               alignItems: 'center',
               gap: spacing.md,
-              backgroundColor: colors.surface,
-              borderColor: colors.border,
-              borderWidth: 1,
-              borderRadius: radius.md,
-              padding: spacing.md,
+              borderTopWidth: StyleSheet.hairlineWidth,
+              borderTopColor: colors.border,
+              paddingVertical: spacing.md,
             }}
           >
             <Ionicons name={iconFor(a)} size={26} color={a.kind === 'goal' ? colors.warningText : colors.primary} />

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MacroRow } from '../../src/components/plan-summary';
-import { Button, Card, ErrorText, Screen, Text } from '../../src/components/ui';
+import { Button, Card, ErrorText, LinkButton, Screen, Text } from '../../src/components/ui';
 import { addWater, getLogs, getWaterMl } from '../../src/lib/diet';
 import { addDays, formatMl, isoWeekday, sumMacros, toISODate, type Meal } from '../../src/lib/diet-math';
 import { tap } from '../../src/lib/haptics';
@@ -91,52 +91,67 @@ export default function Inicio() {
     }
   };
 
+  const eaten = Math.round(total.kcal);
+  const share = kcalTarget ? Math.min(1, total.kcal / kcalTarget) : 0;
+  const date = new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+
   return (
     <Screen>
-      <View>
+      <View style={{ gap: 2 }}>
+        <Text variant="caption" muted style={{ fontWeight: '500' }}>
+          {date[0].toUpperCase() + date.slice(1)}
+        </Text>
         <Text variant="title">Inicio</Text>
-        <Text muted>{new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</Text>
       </View>
       <ErrorText>{error ?? actionError}</ErrorText>
 
-      <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-        <View style={{ flex: 1 }}>
-          <Button title="Empezar entreno" onPress={startWorkout} loading={busy} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Button
-            title="Añadir comida"
-            variant="secondary"
-            onPress={() => router.push({ pathname: '/food-add', params: { target: 'diary', meal: mealByHour(new Date().getHours()), date: today } })}
-          />
-        </View>
-      </View>
-      <Button title="Registrar peso" variant="secondary" onPress={() => router.push('/weight')} />
-
-      <Card>
-        <Text variant="caption" muted>
-          Te quedan hoy
-        </Text>
+      {/* Lo único grande de la pantalla: cuántas calorías quedan hoy */}
+      <View style={{ gap: spacing.md }}>
         {kcalLeft != null ? (
-          <Text style={{ fontSize: 48, fontWeight: '700', lineHeight: 54, color: kcalLeft < 0 ? colors.danger : colors.text }}>
-            {Math.abs(kcalLeft).toLocaleString('es-ES')} kcal
-          </Text>
+          <View>
+            <Text variant="caption" muted style={{ fontWeight: '500' }}>
+              Te quedan hoy
+            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm }}>
+              <Text variant="display" style={{ color: kcalLeft < 0 ? colors.danger : colors.text, fontVariant: ['tabular-nums'] }}>
+                {Math.abs(kcalLeft).toLocaleString('es-ES')}
+              </Text>
+              <Text variant="heading" muted style={{ fontWeight: '400' }}>
+                kcal
+              </Text>
+            </View>
+          </View>
         ) : (
           <Text muted>Sin objetivo calórico</Text>
         )}
         {kcalLeft != null && kcalLeft < 0 ? <Text variant="caption" style={{ color: colors.danger }}>Te has pasado de tu objetivo.</Text> : null}
+        <View accessible accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: Math.round(share * 100) }} style={{ height: 3, borderRadius: 2, backgroundColor: colors.surfaceAlt }}>
+          <View style={{ height: 3, borderRadius: 2, backgroundColor: kcalLeft != null && kcalLeft < 0 ? colors.danger : colors.primary, width: `${share * 100}%` }} />
+        </View>
         <Text variant="caption" muted>
-          Has tomado {Math.round(total.kcal).toLocaleString('es-ES')} de {kcalTarget?.toLocaleString('es-ES') ?? '—'} kcal
+          Has tomado {eaten.toLocaleString('es-ES')} de {kcalTarget?.toLocaleString('es-ES') ?? '—'} kcal
         </Text>
-        <MacroRow
-          proteinG={Math.max(0, left(profile?.target_protein_g, total.protein_g) ?? 0)}
-          carbsG={Math.max(0, left(profile?.target_carbs_g, total.carbs_g) ?? 0)}
-          fatG={Math.max(0, left(profile?.target_fat_g, total.fat_g) ?? 0)}
+        <View style={{ paddingTop: spacing.sm, gap: spacing.xs }}>
+          <MacroRow
+            proteinG={Math.max(0, left(profile?.target_protein_g, total.protein_g) ?? 0)}
+            carbsG={Math.max(0, left(profile?.target_carbs_g, total.carbs_g) ?? 0)}
+            fatG={Math.max(0, left(profile?.target_fat_g, total.fat_g) ?? 0)}
+          />
+          <Text variant="caption" muted>
+            Gramos que te quedan de cada macro.
+          </Text>
+        </View>
+      </View>
+
+      <View style={{ gap: spacing.sm }}>
+        <Button title="Empezar entreno" onPress={startWorkout} loading={busy} />
+        <Button
+          title="Añadir comida"
+          variant="secondary"
+          onPress={() => router.push({ pathname: '/food-add', params: { target: 'diary', meal: mealByHour(new Date().getHours()), date: today } })}
         />
-        <Text variant="caption" muted>
-          Gramos que te quedan de cada macro.
-        </Text>
-      </Card>
+        <LinkButton title="Registrar peso" onPress={() => router.push('/weight')} />
+      </View>
 
       <Card>
         <Text variant="heading">Entreno de hoy</Text>
@@ -146,14 +161,14 @@ export default function Inicio() {
             <Button title="Continuar sesión" onPress={() => router.push({ pathname: '/workout/[id]', params: { id: data.active!.id } })} />
           </>
         ) : doneToday ? (
-          <Text style={{ fontWeight: '600' }}>Entreno completado hoy ✓</Text>
+          <Text style={{ fontWeight: '500' }}>Entreno completado hoy ✓</Text>
         ) : scheduledToday.length ? (
           scheduledToday.map((s) => (
             <View key={`${s.routine.id}-${s.dayIndex}`} style={{ gap: spacing.sm }}>
               <Text>
                 {s.routine.name} · {s.name}
               </Text>
-              <Button title="Empezar" onPress={() => void startScheduled(s.routine.id, s.dayIndex)} loading={busy} />
+              <LinkButton title="Empezar" onPress={() => void startScheduled(s.routine.id, s.dayIndex)} />
             </View>
           ))
         ) : (
@@ -162,21 +177,25 @@ export default function Inicio() {
       </Card>
 
       <Card>
-        <Text variant="heading">Agua</Text>
-        <Text>
-          {formatMl(data?.water ?? 0)} <Text muted>de {formatMl(waterGoal)}</Text>
-        </Text>
-        <View style={{ height: 8, borderRadius: 4, backgroundColor: colors.surfaceAlt }}>
-          <View style={{ height: 8, borderRadius: 4, backgroundColor: colors.protein, width: `${Math.min(100, ((data?.water ?? 0) / waterGoal) * 100)}%` }} />
+        <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}>
+          <Text variant="heading">Agua</Text>
+          <Text>
+            {formatMl(data?.water ?? 0)} <Text muted>de {formatMl(waterGoal)}</Text>
+          </Text>
         </View>
-        <Button title="+ 250 ml" variant="secondary" onPress={() => void drink()} />
+        <View style={{ height: 3, borderRadius: 2, backgroundColor: colors.surfaceAlt }}>
+          <View style={{ height: 3, borderRadius: 2, backgroundColor: colors.primary, width: `${Math.min(100, ((data?.water ?? 0) / waterGoal) * 100)}%` }} />
+        </View>
+        <LinkButton title="+ 250 ml" onPress={() => void drink()} />
       </Card>
 
       <Card>
-        <Text variant="heading">Racha</Text>
-        <Text style={{ fontSize: 32, fontWeight: '700' }}>
-          {streak} {streak === 1 ? 'día' : 'días'}
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}>
+          <Text variant="heading">Racha</Text>
+          <Text variant="heading" style={{ fontWeight: '500' }}>
+            {streak} {streak === 1 ? 'día' : 'días'}
+          </Text>
+        </View>
         <Text variant="caption" muted>
           Días seguidos con tus calorías dentro de ±10 % del objetivo y, si tenías entreno programado, entrenado. El día de hoy no rompe la racha hasta que termina.
         </Text>

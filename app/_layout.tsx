@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
+import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -8,7 +9,7 @@ import { SyncBanner } from '../src/components/sync-banner';
 import { syncReminders } from '../src/lib/notifications';
 import { isSupabaseConfigured, offline } from '../src/lib/supabase';
 import { Button, Screen, Text } from '../src/components/ui';
-import { useTheme } from '../src/theme';
+import { FONT_FILES, useTheme } from '../src/theme';
 
 function RootStack() {
   const { colors } = useTheme();
@@ -81,7 +82,10 @@ function RootStack() {
 }
 
 export default function RootLayout() {
-  const { isDark } = useTheme();
+  const { isDark, colors } = useTheme();
+  // La fuente se carga antes de pintar nada para que el texto no cambie de aspecto al arrancar; si falla, se usa la del sistema.
+  const [fontsReady, fontError] = useFonts(FONT_FILES);
+  if (!fontsReady && !fontError) return <View style={{ flex: 1, backgroundColor: colors.background }} />;
 
   if (!isSupabaseConfigured) {
     return (

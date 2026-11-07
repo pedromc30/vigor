@@ -1,11 +1,12 @@
 import { useState } from 'react';
+import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/providers/AuthProvider';
 import { runDeleteAccount } from '../../src/lib/account';
 import { confirmSignOut } from '../../src/lib/offline/session';
 import { ACTIVITY_LABELS, DIET_LABELS, GOAL_LABELS, SEX_LABELS, ALLERGEN_OPTIONS } from '../../src/lib/labels';
 import { MacroRow } from '../../src/components/plan-summary';
-import { Button, Card, Disclaimer, ErrorText, Screen, Text } from '../../src/components/ui';
+import { Button, Card, Disclaimer, ErrorText, LinkRow, Screen, Text } from '../../src/components/ui';
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
@@ -67,9 +68,11 @@ export default function Perfil() {
         <Button title="Editar objetivos" variant="secondary" onPress={() => router.push('/edit-targets')} />
       </Card>
 
-      <Button title="Recordatorios" variant="secondary" onPress={() => router.push('/reminders')} />
-      <Button title="Exportar datos (CSV)" variant="secondary" onPress={() => router.push('/export')} />
-      <Button title="Privacidad y datos" variant="secondary" onPress={() => router.push('/privacy')} />
+      <View>
+        <LinkRow title="Recordatorios" onPress={() => router.push('/reminders')} />
+        <LinkRow title="Exportar datos (CSV)" onPress={() => router.push('/export')} />
+        <LinkRow title="Privacidad y datos" onPress={() => router.push('/privacy')} />
+      </View>
 
       <Disclaimer />
 

@@ -270,7 +270,14 @@ export default function Progreso() {
         </Text>
         {latest ? (
           <>
-            <Text style={{ fontSize: 48, fontWeight: '700', lineHeight: 54 }}>{formatKg(latest.value)} kg</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm }}>
+              <Text variant="display" style={{ fontSize: 56, lineHeight: 62, fontVariant: ['tabular-nums'] }}>
+                {formatKg(latest.value)}
+              </Text>
+              <Text variant="heading" muted style={{ fontWeight: '400' }}>
+                kg
+              </Text>
+            </View>
             <Text variant="caption" muted>
               {short(latest.date)} · media 7 días {latestAvg ? `${formatKg(latestAvg.value)} kg` : '—'}
               {weeklyChange != null ? ` · ${signed(weeklyChange)} kg en la última semana` : ''}

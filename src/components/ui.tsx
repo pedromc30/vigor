@@ -1,6 +1,8 @@
-import { type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
+  type StyleProp,
+  type TextStyle,
   KeyboardAvoidingView,
   Pressable,
   ScrollView,
@@ -13,16 +15,19 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { radius, spacing, useTheme } from '../theme';
+import { Ionicons } from '@expo/vector-icons';
+import { fontFamily, radius, spacing, useTheme } from '../theme';
 
-type Variant = 'title' | 'heading' | 'body' | 'caption' | 'label';
+type Variant = 'display' | 'title' | 'heading' | 'body' | 'caption' | 'label';
 
-const textStyles: Record<Variant, { fontSize: number; fontWeight: '400' | '600' | '700'; lineHeight: number }> = {
-  title: { fontSize: 28, fontWeight: '700', lineHeight: 34 },
-  heading: { fontSize: 18, fontWeight: '600', lineHeight: 24 },
-  body: { fontSize: 16, fontWeight: '400', lineHeight: 22 },
-  caption: { fontSize: 13, fontWeight: '400', lineHeight: 18 },
-  label: { fontSize: 14, fontWeight: '600', lineHeight: 20 },
+// Escala tipográfica: números grandes y ligeros para lo importante, títulos recogidos y un cuerpo cómodo de leer.
+const textStyles: Record<Variant, { fontSize: number; fontWeight: '300' | '400' | '500' | '600'; lineHeight: number; letterSpacing: number }> = {
+  display: { fontSize: 64, fontWeight: '300', lineHeight: 68, letterSpacing: -2 },
+  title: { fontSize: 30, fontWeight: '600', lineHeight: 36, letterSpacing: -0.7 },
+  heading: { fontSize: 19, fontWeight: '600', lineHeight: 26, letterSpacing: -0.2 },
+  body: { fontSize: 16, fontWeight: '400', lineHeight: 24, letterSpacing: 0 },
+  caption: { fontSize: 13, fontWeight: '400', lineHeight: 18, letterSpacing: 0.1 },
+  label: { fontSize: 14, fontWeight: '500', lineHeight: 20, letterSpacing: 0.05 },
 };
 
 export function Text({
@@ -32,7 +37,19 @@ export function Text({
   ...rest
 }: TextProps & { variant?: Variant; muted?: boolean }) {
   const { colors } = useTheme();
-  return <RNText {...rest} style={[textStyles[variant], { color: muted ? colors.textMuted : colors.text }, style]} />;
+  // El grosor (también el que se pasa en `style`) decide el archivo de la fuente; se quita `fontWeight` para no engrosarlo dos veces.
+  const { fontWeight, ...custom } = (StyleSheet.flatten(style as StyleProp<TextStyle>) ?? {}) as TextStyle;
+  const base = textStyles[variant];
+  return (
+    <RNText
+      {...rest}
+      style={[
+        { ...base, fontWeight: undefined },
+        { color: muted ? colors.textMuted : colors.text, fontFamily: fontFamily(fontWeight ?? base.fontWeight) },
+        custom,
+      ]}
+    />
+  );
 }
 
 export function Screen({
@@ -48,9 +65,10 @@ export function Screen({
   const insets = useSafeAreaInsets();
   // En pantallas anchas (tablet, web) el contenido no se estira: queda centrado con un ancho máximo.
   const content = {
-    padding: spacing.lg,
-    paddingTop: padTop ? insets.top + spacing.lg : spacing.lg,
-    gap: spacing.lg,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.lg,
+    paddingTop: padTop ? insets.top + spacing.xl : spacing.lg,
+    gap: spacing.xl,
     width: '100%' as const,
     maxWidth: 640,
     alignSelf: 'center' as const,
@@ -62,7 +80,7 @@ export function Screen({
     >
       {scroll ? (
         <ScrollView
-          contentContainerStyle={[content, { paddingBottom: insets.bottom + spacing.xxl }]}
+          contentContainerStyle={[content, { paddingBottom: insets.bottom + spacing.xxl * 2 }]}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
         >
@@ -75,17 +93,16 @@ export function Screen({
   );
 }
 
+/** Sección plana: sin caja ni sombra, solo una línea fina que la separa de la anterior. */
 export function Card({ children, style }: { children: ReactNode; style?: ViewStyle }) {
   const { colors } = useTheme();
   return (
     <View
       style={[
         {
-          backgroundColor: colors.surface,
-          borderRadius: radius.lg,
-          borderWidth: StyleSheet.hairlineWidth,
-          borderColor: colors.border,
-          padding: spacing.lg,
+          borderTopWidth: StyleSheet.hairlineWidth,
+          borderTopColor: colors.border,
+          paddingTop: spacing.lg,
           gap: spacing.sm,
         },
         style,
@@ -93,6 +110,41 @@ export function Card({ children, style }: { children: ReactNode; style?: ViewSty
     >
       {children}
     </View>
+  );
+}
+
+/** Fila de navegación: título, ayuda opcional y una flecha. Sustituye a los botones apilados que solo llevan a otra pantalla. */
+export function LinkRow({ title, hint, onPress }: { title: string; hint?: string; onPress: () => void }) {
+  const { colors } = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        minHeight: 56,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.md,
+        borderTopWidth: StyleSheet.hairlineWidth,
+        borderTopColor: colors.border,
+        opacity: pressed ? 0.6 : 1,
+      })}
+    >
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text variant="body" style={{ fontWeight: '500' }}>
+          {title}
+        </Text>
+        {hint ? (
+          <Text variant="caption" muted>
+            {hint}
+          </Text>
+        ) : null}
+      </View>
+      <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+        <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+      </View>
+    </Pressable>
   );
 }
 
@@ -110,8 +162,10 @@ export function Button({
   disabled?: boolean;
 }) {
   const { colors } = useTheme();
-  const bg = { primary: colors.primary, secondary: colors.surfaceAlt, danger: 'transparent', ghost: 'transparent' }[variant];
-  const fg = { primary: colors.onPrimary, secondary: colors.text, danger: colors.danger, ghost: colors.primary }[variant];
+  // Principal: tinta rellena. Secundario: solo contorno. Peligro: contorno rojo. Ghost: texto apagado.
+  const bg = { primary: colors.ink, secondary: 'transparent', danger: 'transparent', ghost: 'transparent' }[variant];
+  const fg = { primary: colors.onInk, secondary: colors.text, danger: colors.danger, ghost: colors.textMuted }[variant];
+  const line = { primary: 'transparent', secondary: colors.border, danger: colors.danger, ghost: 'transparent' }[variant];
   const inactive = disabled || loading;
   return (
     <Pressable
@@ -121,17 +175,17 @@ export function Button({
       disabled={inactive}
       style={({ pressed }) => ({
         backgroundColor: bg,
-        borderRadius: radius.md,
-        borderWidth: variant === 'danger' ? 1 : 0,
-        borderColor: colors.danger,
-        minHeight: 50,
-        paddingHorizontal: spacing.lg,
+        borderRadius: 999,
+        borderWidth: variant === 'primary' || variant === 'ghost' ? 0 : 1,
+        borderColor: line,
+        minHeight: 52,
+        paddingHorizontal: spacing.xl,
         alignItems: 'center',
         justifyContent: 'center',
-        opacity: inactive ? 0.5 : pressed ? 0.85 : 1,
+        opacity: inactive ? 0.4 : pressed ? 0.75 : 1,
       })}
     >
-      {loading ? <ActivityIndicator color={fg} /> : <Text variant="label" style={{ color: fg, fontSize: 16 }}>{title}</Text>}
+      {loading ? <ActivityIndicator color={fg} /> : <Text variant="label" style={{ color: fg, fontSize: 16, fontWeight: '500' }}>{title}</Text>}
     </Pressable>
   );
 }
@@ -140,28 +194,42 @@ export function TextField({
   label,
   error,
   suffix,
+  onFocus,
+  onBlur,
   ...rest
 }: TextInputProps & { label: string; error?: string | null; suffix?: string }) {
   const { colors } = useTheme();
+  const [focused, setFocused] = useState(false);
   return (
     <View style={{ gap: spacing.xs }}>
-      <Text variant="label">{label}</Text>
+      <Text variant="caption" muted style={{ fontWeight: '500' }}>
+        {label}
+      </Text>
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
         <TextInput
           accessibilityLabel={label}
           placeholderTextColor={colors.textMuted}
           {...rest}
+          onFocus={(e) => {
+            setFocused(true);
+            onFocus?.(e);
+          }}
+          onBlur={(e) => {
+            setFocused(false);
+            onBlur?.(e);
+          }}
           style={{
             flex: 1,
             minWidth: 0,
-            minHeight: 50,
+            minHeight: 52,
             borderRadius: radius.md,
-            borderWidth: 1,
-            borderColor: error ? colors.danger : colors.border,
+            borderWidth: focused ? 1.5 : 1,
+            borderColor: error ? colors.danger : focused ? colors.ink : colors.border,
             backgroundColor: colors.surface,
             color: colors.text,
-            paddingHorizontal: spacing.md,
+            paddingHorizontal: spacing.lg,
             fontSize: 16,
+            fontFamily: fontFamily('400'),
           }}
         />
         {suffix ? (
@@ -194,7 +262,9 @@ export function OptionList<T extends string>({
   const { colors } = useTheme();
   return (
     <View style={{ gap: spacing.sm }} accessibilityRole="radiogroup">
-      <Text variant="label">{label}</Text>
+      <Text variant="caption" muted style={{ fontWeight: '500' }}>
+        {label}
+      </Text>
       {options.map((o) => {
         const selected = o.value === value;
         return (
@@ -205,10 +275,10 @@ export function OptionList<T extends string>({
             onPress={() => onChange(o.value)}
             style={{
               borderRadius: radius.md,
-              borderWidth: selected ? 2 : 1,
-              borderColor: selected ? colors.primary : colors.border,
-              backgroundColor: colors.surface,
-              padding: spacing.md,
+              borderWidth: selected ? 1.5 : 1,
+              borderColor: selected ? colors.ink : colors.border,
+              backgroundColor: 'transparent',
+              padding: spacing.lg,
             }}
           >
             <Text variant="label">{o.title}</Text>
@@ -239,7 +309,9 @@ export function SegmentRow<T extends string | number>({
   const { colors } = useTheme();
   return (
     <View style={{ gap: spacing.xs }}>
-      <Text variant="label">{label}</Text>
+      <Text variant="caption" muted style={{ fontWeight: '500' }}>
+        {label}
+      </Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }} accessibilityRole="radiogroup">
         {options.map((o) => {
           const selected = o.value === value;
@@ -256,12 +328,12 @@ export function SegmentRow<T extends string | number>({
                 alignItems: 'center',
                 justifyContent: 'center',
                 borderRadius: radius.md,
-                backgroundColor: selected ? colors.primary : colors.surface,
+                backgroundColor: selected ? colors.ink : 'transparent',
                 borderWidth: 1,
-                borderColor: selected ? colors.primary : colors.border,
+                borderColor: selected ? colors.ink : colors.border,
               }}
             >
-              <Text variant="label" style={{ color: selected ? colors.onPrimary : colors.text }}>
+              <Text variant="label" style={{ color: selected ? colors.onInk : colors.text }}>
                 {o.title}
               </Text>
             </Pressable>
@@ -286,7 +358,9 @@ export function ChipMulti({
   const { colors } = useTheme();
   return (
     <View style={{ gap: spacing.xs }}>
-      <Text variant="label">{label}</Text>
+      <Text variant="caption" muted style={{ fontWeight: '500' }}>
+        {label}
+      </Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
         {options.map((o) => {
           const on = selected.includes(o.key);
@@ -302,12 +376,12 @@ export function ChipMulti({
                 minHeight: 40,
                 justifyContent: 'center',
                 borderRadius: 999,
-                backgroundColor: on ? colors.primary : colors.surface,
+                backgroundColor: on ? colors.ink : 'transparent',
                 borderWidth: 1,
-                borderColor: on ? colors.primary : colors.border,
+                borderColor: on ? colors.ink : colors.border,
               }}
             >
-              <Text variant="caption" style={{ color: on ? colors.onPrimary : colors.text, fontWeight: '600' }}>
+              <Text variant="caption" style={{ color: on ? colors.onInk : colors.text, fontWeight: '500' }}>
                 {o.label}
               </Text>
             </Pressable>
@@ -376,12 +450,12 @@ export function ChipSingle<T extends string>({
               minHeight: 36,
               justifyContent: 'center',
               borderRadius: 999,
-              backgroundColor: on ? colors.primary : colors.surface,
+              backgroundColor: on ? colors.ink : 'transparent',
               borderWidth: 1,
-              borderColor: on ? colors.primary : colors.border,
+              borderColor: on ? colors.ink : colors.border,
             }}
           >
-            <Text variant="caption" style={{ color: on ? colors.onPrimary : colors.text, fontWeight: '600' }}>
+            <Text variant="caption" style={{ color: on ? colors.onInk : colors.text, fontWeight: '500' }}>
               {o.label}
             </Text>
           </Pressable>
@@ -412,7 +486,7 @@ export function LinkButton({
       hitSlop={8}
       style={{ minHeight: 36, justifyContent: 'center', opacity: disabled ? 0.5 : 1 }}
     >
-      <Text variant="label" style={{ color: danger ? colors.danger : colors.primary }}>
+      <Text variant="label" style={{ color: danger ? colors.danger : colors.primary, fontWeight: '500' }}>
         {title}
       </Text>
     </Pressable>

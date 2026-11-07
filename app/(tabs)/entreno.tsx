@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Button, Card, ErrorText, Screen, Text } from '../../src/components/ui';
+import { Button, Card, ErrorText, LinkRow, Screen, Text } from '../../src/components/ui';
 import { MUSCLE_LABELS, WEEKDAY_LONG } from '../../src/lib/labels';
 import { getActiveSession, getSetsSince, listRoutines, startSession } from '../../src/lib/training';
 import { formatKg, volumeByMuscleGroup, weekStart } from '../../src/lib/training-math';
@@ -66,20 +66,12 @@ export default function Entreno() {
         {data?.routines.map((r) => {
           const scheduled = r.schedule.filter((d) => d > 0).map((d) => WEEKDAY_LONG[d].slice(0, 3));
           return (
-            <Pressable
+            <LinkRow
               key={r.id}
-              accessibilityRole="button"
+              title={r.name}
+              hint={`${r.day_names.length} ${r.day_names.length === 1 ? 'día' : 'días'} · ${r.routine_exercises?.length ?? 0} ${r.routine_exercises?.length === 1 ? 'ejercicio' : 'ejercicios'}${scheduled.length ? ` · ${scheduled.join(', ')}` : ''}`}
               onPress={() => router.push({ pathname: '/routine/[id]', params: { id: r.id } })}
-            >
-              <Card>
-                <Text variant="label">{r.name}</Text>
-                <Text variant="caption" muted>
-                  {r.day_names.length} {r.day_names.length === 1 ? 'día' : 'días'} ·{' '}
-                  {r.routine_exercises?.length ?? 0} {r.routine_exercises?.length === 1 ? 'ejercicio' : 'ejercicios'}
-                  {scheduled.length ? ` · ${scheduled.join(', ')}` : ''}
-                </Text>
-              </Card>
-            </Pressable>
+            />
           );
         })}
         <Button title="Nueva rutina" onPress={() => router.push('/routine-edit')} />
@@ -109,8 +101,10 @@ export default function Entreno() {
         ))}
       </Card>
 
-      <Button title="Historial de sesiones" variant="secondary" onPress={() => router.push('/history')} />
-      <Button title="Biblioteca de ejercicios" variant="secondary" onPress={() => router.push('/exercises')} />
+      <View>
+        <LinkRow title="Historial de sesiones" onPress={() => router.push('/history')} />
+        <LinkRow title="Biblioteca de ejercicios" onPress={() => router.push('/exercises')} />
+      </View>
     </Screen>
   );
 }

@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { Pressable, View, type LayoutChangeEvent } from 'react-native';
 import Svg, { Circle, Line, Path, Rect, Text as SvgText } from 'react-native-svg';
 import { niceTicks } from '../lib/progress-math';
-import { spacing, useTheme } from '../theme';
+import { fontFamily, spacing, useTheme } from '../theme';
 import { Text } from './ui';
 
 // Gráficas SVG sencillas siguiendo las pautas de visualización: líneas de 2 px, barras de ≤ 24 px con
@@ -173,12 +173,13 @@ export function LineChart({
           <Line key={t} x1={PAD.left} x2={width - PAD.right} y1={y(t)} y2={y(t)} stroke={colors.border} strokeWidth={1} />
         ))}
         {ticks.map((t) => (
-          <SvgText key={`l${t}`} x={PAD.left - 6} y={y(t) + 4} fontSize={11} fill={colors.textMuted} textAnchor="end">
+          <SvgText fontFamily={fontFamily('400')} key={`l${t}`} x={PAD.left - 6} y={y(t) + 4} fontSize={11} fill={colors.textMuted} textAnchor="end">
             {format(t)}
           </SvgText>
         ))}
         {xLabels.map((l, i) => (
           <SvgText
+            fontFamily={fontFamily('400')}
             key={`${l.t}-${i}`}
             x={x(l.t)}
             y={height - 6}
@@ -192,7 +193,7 @@ export function LineChart({
         {referenceLine ? (
           <>
             <Line x1={PAD.left} x2={width - PAD.right} y1={y(referenceLine.value)} y2={y(referenceLine.value)} stroke={colors.textMuted} strokeWidth={1} />
-            <SvgText x={width - PAD.right} y={y(referenceLine.value) - 4} fontSize={11} fill={colors.textMuted} textAnchor="end">
+            <SvgText fontFamily={fontFamily('400')} x={width - PAD.right} y={y(referenceLine.value) - 4} fontSize={11} fill={colors.textMuted} textAnchor="end">
               {referenceLine.label}
             </SvgText>
           </>
@@ -292,13 +293,13 @@ export function BarChart({
           <Line key={t} x1={PAD.left} x2={width - PAD.right} y1={y(t)} y2={y(t)} stroke={colors.border} strokeWidth={1} />
         ))}
         {shownTicks.map((t) => (
-          <SvgText key={`l${t}`} x={PAD.left - 6} y={y(t) + 4} fontSize={11} fill={colors.textMuted} textAnchor="end">
+          <SvgText fontFamily={fontFamily('400')} key={`l${t}`} x={PAD.left - 6} y={y(t) + 4} fontSize={11} fill={colors.textMuted} textAnchor="end">
             {format(t)}
           </SvgText>
         ))}
         {categories.map((c, i) =>
           i % every === 0 ? (
-            <SvgText key={c + i} x={PAD.left + slot * i + slot / 2} y={height - 6} fontSize={11} fill={colors.textMuted} textAnchor="middle">
+            <SvgText fontFamily={fontFamily('400')} key={c + i} x={PAD.left + slot * i + slot / 2} y={height - 6} fontSize={11} fill={colors.textMuted} textAnchor="middle">
               {c}
             </SvgText>
           ) : null,
@@ -322,7 +323,7 @@ export function BarChart({
         {target ? (
           <>
             <Line x1={PAD.left} x2={width - PAD.right} y1={y(target.value)} y2={y(target.value)} stroke={colors.textMuted} strokeWidth={1} />
-            <SvgText x={width - PAD.right} y={y(target.value) - 4} fontSize={11} fill={colors.textMuted} textAnchor="end">
+            <SvgText fontFamily={fontFamily('400')} x={width - PAD.right} y={y(target.value) - 4} fontSize={11} fill={colors.textMuted} textAnchor="end">
               {target.label}
             </SvgText>
           </>
