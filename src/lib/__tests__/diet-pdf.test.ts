@@ -1,5 +1,5 @@
 import { makePdf, type PdfItem } from '../__fixtures__/pdf';
-import { averageTargets, parseDietPdf, parseTotals } from '../diet-pdf';
+import { averageTargets, parseDietPdf, parseMacros, parseTotals } from '../diet-pdf';
 import { readPdfLines } from '../pdf-text';
 import { SpreadsheetError } from '../spreadsheet';
 
@@ -92,5 +92,41 @@ describe('parseDietPdf', () => {
   it('un PDF que no es una dieta no da alimentos y un archivo roto da un error legible', () => {
     expect(parseDietPdf(makePdf([[{ x: 50, y: 700, text: 'Factura 123' }]])).entries).toEqual([]);
     expect(() => parseDietPdf(new Uint8Array([1, 2, 3]))).toThrow(SpreadsheetError);
+  });
+});
+
+describe('parseDietPdf: tabla con calorías y macros por comida', () => {
+  const t = (x: number, y: number, text: string): PdfItem => ({ x, y, text });
+  const page: PdfItem[] = [
+    t(46, 780, 'Lunes · trabajo + entreno'),
+    t(46, 762, 'Total: ~1.000 kcal · 80 g proteína · 100 g hidratos · 30 g grasa'),
+    t(54, 740, 'Comida'), t(142, 740, 'Qué comer'), t(387, 740, 'kcal'), t(424, 740, 'Proteína · Hidratos ·'), t(424, 728, 'Grasa'),
+    t(54, 700, 'Desayuno'), t(142, 700, 'Gachas: 70 g de avena + 30 g de whey'), t(387, 700, '600'), t(424, 700, '45 g · 81 g · 15 g'),
+    t(142, 686, '+ 1 plátano'),
+    t(54, 650, 'Media'), t(142, 650, '250 g de skyr + 1 kiwi'), t(387, 650, '400'), t(424, 650, '35 g · 20 g · 15 g'),
+    t(54, 636, 'mañana'), // el nombre en dos líneas, con la segunda sola
+    t(54, 600, 'Cena'), t(142, 600, '250 g de merluza'), // sin columnas de calorías: se trocea como antes
+  ];
+  const r = parseDietPdf(makePdf([page]));
+  it('cada comida es una entrada con sus calorías y macros', () => {
+    expect(r.entries.map((e) => [e.meal, e.name, e.kcal, e.protein_g, e.carbs_g, e.fat_g])).toEqual([
+      ['desayuno', 'Gachas: 70 g de avena + 30 g de whey + 1 plátano', 600, 45, 81, 15],
+      ['snacks', '250 g de skyr + 1 kiwi', 400, 35, 20, 15],
+      ['cena', 'merluza', 0, 0, 0, 0],
+    ]);
+    expect(r.entries[0]).toMatchObject({ quantity_g: null, servings: 1 });
+  });
+  it('los macros por comida suman el total del día y se avisa', () => {
+    expect(r.entries[0].kcal + r.entries[1].kcal).toBe(1000);
+    expect(r.notes.some((n) => /una sola entrada/.test(n))).toBe(true);
+    expect(r.notes.some((n) => /sin calorías/.test(n))).toBe(false);
+  });
+});
+
+describe('parseMacros', () => {
+  it('lee «proteína · hidratos · grasa»', () => {
+    expect(parseMacros('45 g · 81 g · 15 g')).toEqual({ protein_g: 45, carbs_g: 81, fat_g: 15 });
+    expect(parseMacros('12,5 g · 3 g · 0,5 g')).toEqual({ protein_g: 12.5, carbs_g: 3, fat_g: 0.5 });
+    expect(parseMacros('Proteína · Hidratos ·')).toBeNull();
   });
 });
