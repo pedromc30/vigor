@@ -95,6 +95,10 @@ export default function Dieta() {
     <Screen>
       <Text variant="title">Dieta</Text>
 
+      <View>
+        <LinkRow title="Planificador semanal" onPress={() => router.push('/plan')} />
+      </View>
+
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <LinkButton title="◀ Anterior" onPress={() => setDate(addDays(date, -1))} />
         <Text variant="label" accessibilityLiveRegion="polite">
@@ -190,7 +194,6 @@ export default function Dieta() {
       })}
 
       <View>
-        <LinkRow title="Planificador semanal" onPress={() => router.push('/plan')} />
         <LinkRow title="Archivos de dieta" onPress={() => router.push('/diet-files')} />
       </View>
       <View style={{ flexDirection: 'row', gap: spacing.sm }}>
