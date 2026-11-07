@@ -4,6 +4,7 @@ import { Platform } from 'react-native';
 import { toCsv, type CsvFormat } from './csv';
 import {
   achievementsTable,
+  dietFilesTable,
   dietTable,
   foodsTable,
   goalsTable,
@@ -32,6 +33,7 @@ export const DATASETS = [
   { key: 'alimentos', label: 'Mis alimentos', hint: 'Alimentos propios y guardados de Open Food Facts.' },
   { key: 'recetas', label: 'Recetas', hint: 'Recetas con sus ingredientes.' },
   { key: 'planificador', label: 'Planificador semanal', hint: 'Menús planificados.' },
+  { key: 'archivos_dieta', label: 'Archivos de dieta (índice)', hint: 'Nombre, tipo, tamaño y fecha. Los archivos no se incluyen en el CSV.' },
   { key: 'fotos', label: 'Fotos (índice)', hint: 'Fechas y nombres de archivo. Las imágenes no se incluyen en el CSV.' },
 ] as const;
 
@@ -73,6 +75,8 @@ export async function loadTable(key: DatasetKey): Promise<Table> {
       return recipesTable(await all('recipes', 'name, servings, notes, recipe_items(grams, position, foods(name))'));
     case 'planificador':
       return planTable(await all('meal_plan_entries', 'weekday, meal, name, quantity_g, servings, kcal, protein_g, carbs_g, fat_g'));
+    case 'archivos_dieta':
+      return dietFilesTable(await all('diet_files', 'name, mime_type, size_bytes, created_at'));
     case 'fotos':
       return photosTable(await all('progress_photos', 'taken_on, storage_path, note'));
   }
@@ -104,7 +108,10 @@ export async function saveAndShare(table: Table, format: CsvFormat): Promise<'sh
 }
 
 /** Descarga una foto de progreso (por su URL firmada) y abre «compartir» para guardarla; en web la descarga. */
-export async function shareRemoteImage(url: string, filename: string): Promise<void> {
+export const shareRemoteImage = (url: string, filename: string) => shareRemoteFile(url, filename, 'image/jpeg', 'public.jpeg', 'Guardar foto');
+
+/** Descarga un archivo (por su URL firmada) y abre «compartir» para guardarlo o abrirlo con otra app; en web lo descarga. */
+export async function shareRemoteFile(url: string, filename: string, mimeType: string, uti = 'public.data', dialogTitle = 'Compartir archivo'): Promise<void> {
   if (Platform.OS === 'web') {
     const a = document.createElement('a');
     a.href = url;
@@ -119,5 +126,5 @@ export async function shareRemoteImage(url: string, filename: string): Promise<v
   if (file.exists) file.delete();
   const saved = await File.downloadFileAsync(url, file);
   if (!(await Sharing.isAvailableAsync())) throw new Error('Este dispositivo no permite compartir archivos.');
-  await Sharing.shareAsync(saved.uri, { mimeType: 'image/jpeg', UTI: 'public.jpeg', dialogTitle: 'Guardar foto' });
+  await Sharing.shareAsync(saved.uri, { mimeType, UTI: uti, dialogTitle });
 }

@@ -167,3 +167,11 @@ export function achievementsTable(rows: { kind: string; value: number; weight_kg
       .map((a) => [date(a.achieved_at), a.exercises?.name ?? '', PR_NAMES[a.kind] ?? a.kind, Number(a.value), Number(a.weight_kg), a.reps] as Cell[]),
   };
 }
+
+export function dietFilesTable(rows: { name: string; mime_type: string; size_bytes: number; created_at: string }[]): Table {
+  return {
+    filename: 'archivos_dieta',
+    headers: ['fecha', 'nombre', 'tipo', 'tamano_bytes'],
+    rows: [...rows].sort((a, b) => a.created_at.localeCompare(b.created_at)).map((f) => [date(f.created_at), f.name, f.mime_type, f.size_bytes] as Cell[]),
+  };
+}

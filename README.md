@@ -66,6 +66,14 @@ App móvil (Expo + React Native + TypeScript, backend Supabase) que combina entr
 - Open Food Facts limita las consultas (10/min en búsquedas, 15/min por producto), por eso la búsqueda por texto se lanza al pulsar «Buscar».
 - Datos de Open Food Facts: licencia ODbL; pueden contener errores.
 
+### Archivos de dieta (migración `0008_diet_files.sql`)
+
+- Dieta → **Archivos de dieta**: adjunta la dieta que te dé tu dietista como PDF, imagen, Word, Excel o texto (también se puede hacer una foto), de hasta **10 MB** cada uno. Se pueden abrir (enlace temporal firmado), compartir y eliminar.
+- Se guardan en un espacio de Storage **privado** (`diet-files`), en la carpeta de cada usuario con un nombre generado, y su índice en la tabla `diet_files` (RLS: cada usuario solo ve lo suyo). El tipo y el tamaño se comprueban en la app y también en la base de datos y en el bucket.
+- Se borran al eliminar la cuenta (igual que las fotos de progreso) y su índice va en la exportación CSV (los archivos no).
+- Usa `expo-document-picker`, que requiere recompilar la app. Para adjuntar hace falta conexión.
+- De momento los archivos **solo se guardan**: la app no lee su contenido para rellenar la dieta.
+
 ## Notas de dependencias
 
 Las versiones de los módulos nativos están fijadas a las que incluye Expo Go para el SDK 58 (`node_modules/expo/bundledNativeModules.json`). Importante: `@react-native-async-storage/async-storage` debe ser la **2.2.0**; la 3.x necesita un módulo nativo que Expo Go no trae y rompe el inicio de sesión en el móvil.

@@ -8,7 +8,7 @@ import { deleteAccount } from './profile';
 export async function runDeleteAccount(signOut: () => Promise<void>): Promise<string | null> {
   const ok = await confirm(
     'Eliminar cuenta',
-    'Se borrarán de forma permanente tu cuenta y todos tus datos: perfil, entrenos, dieta, medidas y fotos. Esta acción no se puede deshacer. Si quieres conservar algo, exporta tus datos antes.',
+    'Se borrarán de forma permanente tu cuenta y todos tus datos: perfil, entrenos, dieta (incluidos los archivos adjuntos), medidas y fotos. Esta acción no se puede deshacer. Si quieres conservar algo, exporta tus datos antes.',
     'Eliminar todo',
     true,
   );

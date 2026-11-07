@@ -192,6 +192,7 @@ export default function Dieta() {
       })}
 
       <Button title="Planificador semanal" variant="secondary" onPress={() => router.push('/plan')} />
+      <Button title="Archivos de dieta" variant="secondary" onPress={() => router.push('/diet-files')} />
       <View style={{ flexDirection: 'row', gap: spacing.sm }}>
         <View style={{ flex: 1 }}>
           <Button title="Nuevo alimento" variant="secondary" onPress={() => router.push('/food-create')} />

@@ -1,3 +1,4 @@
+import { deleteAllDietFiles } from './diet-files';
 import { deleteAllPhotoFiles } from './progress';
 import { supabase } from './supabase';
 import type { ActivityLevel, Goal, Sex } from './nutrition';
@@ -47,8 +48,9 @@ export async function upsertProfile(userId: string, values: ProfileUpdate): Prom
 }
 
 export async function deleteAccount(): Promise<void> {
-  // Las fotos viven en Storage y no se borran solas con la cuenta: primero se eliminan los archivos.
+  // Las fotos y los archivos de dieta viven en Storage y no se borran solos con la cuenta: primero se eliminan los archivos.
   await deleteAllPhotoFiles();
+  await deleteAllDietFiles();
   const { error } = await supabase.rpc('delete_my_account');
   if (error) throw error;
 }

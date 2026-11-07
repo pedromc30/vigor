@@ -1,4 +1,4 @@
-import { achievementsTable, goalsTable, dietTable, foodsTable, metricsTable, photosTable, planTable, profileTable, recipesTable, routinesTable, waterTable, workoutsTable } from '../export-datasets';
+import { dietFilesTable, achievementsTable, goalsTable, dietTable, foodsTable, metricsTable, photosTable, planTable, profileTable, recipesTable, routinesTable, waterTable, workoutsTable } from '../export-datasets';
 
 describe('workoutsTable', () => {
   const sessions = [
@@ -90,6 +90,14 @@ describe('otras tablas', () => {
     ]);
     expect(a.rows.map((r) => [r[0], r[1], r[2]])).toEqual([['2026-10-10', '', 'objetivo_conseguido'], ['2026-10-12', 'Press', 'record_1rm']]);
     for (const t of [g, a]) for (const r of t.rows) expect(r).toHaveLength(t.headers.length);
+  });
+  it('archivos de dieta: índice con nombre, tipo y tamaño', () => {
+    const t = dietFilesTable([
+      { name: 'b.pdf', mime_type: 'application/pdf', size_bytes: 200, created_at: '2026-11-02T10:00:00Z' },
+      { name: 'a.xlsx', mime_type: 'application/vnd.ms-excel', size_bytes: 100, created_at: '2026-11-01T10:00:00Z' },
+    ]);
+    expect(t.rows.map((r) => [r[0], r[1], r[3]])).toEqual([['2026-11-01', 'a.xlsx', 100], ['2026-11-02', 'b.pdf', 200]]);
+    expect(t.rows[0]).toHaveLength(t.headers.length);
   });
   it('ordena el diario por fecha', () => {
     const e = { meal: 'comida', name: 'x', quantity_g: 1, servings: null, kcal: 1, protein_g: 1, carbs_g: 1, fat_g: 1 };

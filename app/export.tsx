@@ -76,7 +76,7 @@ export default function ExportScreen() {
         </Card>
       ))}
       <Text variant="caption" muted style={{ paddingBottom: spacing.sm }}>
-        Las fotos de progreso no van en el CSV. Para conservarlas abre cada foto en Progreso → Fotos y usa «Guardar / compartir» antes de eliminar tu cuenta.
+        Las fotos de progreso y los archivos de dieta no van en el CSV. Para conservarlos, abre cada foto en Progreso → Fotos o cada archivo en Dieta → Archivos de dieta y usa «Guardar / compartir» o «Compartir» antes de eliminar tu cuenta.
       </Text>
       <Button title="Volver" variant="ghost" onPress={() => router.back()} />
     </Screen>

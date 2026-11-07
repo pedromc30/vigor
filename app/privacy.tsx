@@ -56,7 +56,7 @@ export default function Privacy() {
       <Section title="Qué datos guardamos">
         <Text>
           Tu email para la cuenta y, con tu consentimiento, datos de salud: sexo, edad, altura, peso, nivel de actividad, objetivo, alergias y preferencias de
-          dieta; tus entrenos, tu diario de comidas y agua, tus medidas corporales y las fotos de progreso que subas.
+          dieta; tus entrenos, tu diario de comidas y agua, tus medidas corporales, las fotos de progreso y los archivos de dieta que subas.
         </Text>
         <Text muted>Cuenta registrada: {session?.user.email ?? '—'}</Text>
       </Section>
@@ -83,7 +83,7 @@ export default function Privacy() {
       <Section title="Dónde y cómo se guardan">
         <Text>
           Tus datos están en Supabase (base de datos, autenticación y archivos), con conexión cifrada. Cada cuenta solo puede acceder a sus propios datos y
-          las fotos están en un espacio privado, visibles solo con enlaces temporales.
+          las fotos y los archivos están en un espacio privado, visibles solo con enlaces temporales.
         </Text>
         <Text variant="caption" muted>
           Para funcionar sin conexión, la app guarda en este dispositivo una copia de lo que consultas y de los cambios aún sin enviar. Esa copia se
