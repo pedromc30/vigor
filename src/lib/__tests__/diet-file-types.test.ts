@@ -1,4 +1,4 @@
-import { DIET_FILE_MAX_BYTES, DIET_FILE_MIMES, cleanFileName, formatSize, resolveDietFile, storagePath, typeOf } from '../diet-file-types';
+import { canImportDiet, DIET_FILE_MAX_BYTES, DIET_FILE_MIMES, cleanFileName, formatSize, resolveDietFile, storagePath, typeOf } from '../diet-file-types';
 
 describe('resolveDietFile', () => {
   it('acepta PDF, imágenes, Word, Excel y texto', () => {
@@ -39,6 +39,19 @@ describe('resolveDietFile', () => {
 
   it('sin tamaño conocido no se rechaza (lo comprobará el servidor)', () => {
     expect(resolveDietFile({ name: 'a.pdf' })).toMatchObject({ ok: true });
+  });
+});
+
+describe('CSV e importación', () => {
+  it('un .csv es CSV aunque el sistema lo declare como Excel (Windows)', () => {
+    expect(resolveDietFile({ name: 'dieta.csv', mimeType: 'application/vnd.ms-excel', size: 10 })).toMatchObject({ ok: true, mime: 'text/csv', ext: 'csv' });
+    expect(resolveDietFile({ name: 'dieta.xls', mimeType: 'application/vnd.ms-excel', size: 10 })).toMatchObject({ ok: true, mime: 'application/vnd.ms-excel' });
+  });
+  it('se pueden leer .xlsx y .csv; el resto solo se guarda', () => {
+    expect(canImportDiet({ name: 'a.xlsx' })).toBe(true);
+    expect(canImportDiet({ name: 'a.CSV' })).toBe(true);
+    expect(canImportDiet({ name: 'a', mime_type: 'text/csv' })).toBe(true);
+    for (const name of ['a.pdf', 'a.xls', 'a.docx', 'a.jpg', 'a.txt']) expect(canImportDiet({ name })).toBe(false);
   });
 });
 

@@ -19,6 +19,7 @@ export const DIET_FILE_TYPES: DietFileType[] = [
   { ext: 'docx', mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', label: 'Word', icon: 'document-outline' },
   { ext: 'xls', mime: 'application/vnd.ms-excel', label: 'Excel', icon: 'grid-outline' },
   { ext: 'xlsx', mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', label: 'Excel', icon: 'grid-outline' },
+  { ext: 'csv', mime: 'text/csv', label: 'CSV', icon: 'grid-outline' },
   { ext: 'txt', mime: 'text/plain', label: 'Texto', icon: 'document-text-outline' },
 ];
 
@@ -47,7 +48,8 @@ export function resolveDietFile(file: { name: string; mimeType?: string | null; 
   const byExt = DIET_FILE_TYPES.find((t) => t.ext === extOf(name));
   const mimeType = file.mimeType?.toLowerCase();
   const byMime = mimeType ? DIET_FILE_TYPES.find((t) => t.mime === mimeType) : undefined;
-  const type = byMime ?? byExt;
+  // Windows da a los .csv el tipo de Excel: manda la extensión.
+  const type = byExt?.ext === 'csv' ? byExt : (byMime ?? byExt);
   if (!type) return { ok: false, error: 'Este tipo de archivo no está permitido. Puedes adjuntar PDF, imágenes, Word, Excel o texto.' };
   if (file.size != null && file.size <= 0) return { ok: false, error: 'El archivo está vacío.' };
   if (file.size != null && file.size > DIET_FILE_MAX_BYTES) {
@@ -72,4 +74,10 @@ export function storagePath(userId: string, ext: string, now: number, rand: stri
 /** Icono y etiqueta de un tipo MIME guardado. */
 export function typeOf(mime: string): DietFileType {
   return DIET_FILE_TYPES.find((t) => t.mime === mime) ?? { ext: '', mime, label: 'Archivo', icon: 'document-outline' };
+}
+
+/** ¿Se puede leer este archivo para rellenar la dieta? Excel moderno (.xlsx) y CSV. */
+export function canImportDiet(file: { name: string; mime_type?: string }): boolean {
+  const ext = extOf(file.name);
+  return ext === 'xlsx' || ext === 'csv' || file.mime_type === 'text/csv' || file.mime_type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 }

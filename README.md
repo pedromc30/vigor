@@ -72,7 +72,9 @@ App móvil (Expo + React Native + TypeScript, backend Supabase) que combina entr
 - Se guardan en un espacio de Storage **privado** (`diet-files`), en la carpeta de cada usuario con un nombre generado, y su índice en la tabla `diet_files` (RLS: cada usuario solo ve lo suyo). El tipo y el tamaño se comprueban en la app y también en la base de datos y en el bucket.
 - Se borran al eliminar la cuenta (igual que las fotos de progreso) y su índice va en la exportación CSV (los archivos no).
 - Usa `expo-document-picker`, que requiere recompilar la app. Para adjuntar hace falta conexión.
-- De momento los archivos **solo se guardan**: la app no lee su contenido para rellenar la dieta.
+- **Usar en mi dieta (migración `0009_diet_files_csv.sql`, permite CSV):** los archivos Excel (`.xlsx`) y CSV se pueden leer **en el móvil**, sin enviar nada a terceros (`src/lib/spreadsheet.ts` lee el `.xlsx` como ZIP+XML con `fflate`; `src/lib/diet-import.ts` interpreta la tabla). Antes de aplicar nada se muestra una pantalla de revisión (qué se ha leído, avisos, lo que no se ha podido colocar, días a importar con interruptor y «Sustituir esos días» o «Añadir a lo que hay»). Rellena el **planificador semanal** y, si el archivo los indica, los **objetivos diarios** (kcal, proteína, carbohidratos, grasa; se marcan como editados a mano).
+  - Formatos que reconoce: días en columnas y comidas en filas; días en filas y comidas en columnas; y una fila por alimento con columnas «Día», «Comida» y «Alimento» (y opcionalmente cantidad, kcal y macros). Las celdas con varios alimentos se separan por salto de línea, «;» o « + », y se reconocen cantidades como «150 g de pollo» o «250 ml de leche».
+  - **Límites:** no lee PDF, Word ni fotos, ni Excel antiguos (`.xls`; hay que guardarlos como `.xlsx` o CSV). Las calorías y macros solo se rellenan si el archivo las trae por alimento (formato de lista); si no, los alimentos entran sin calorías (1 ración o la cantidad en gramos). Una hoja con otra estructura no se reconoce y se explica qué busca la app. Ver `src/lib/diet-import.ts` para las reglas exactas.
 
 ## Notas de dependencias
 

@@ -9,7 +9,7 @@ import { Button, Card, ErrorText, LinkButton, Screen, Text } from '../src/compon
 import { base64ToBytes } from '../src/lib/base64';
 import { confirm } from '../src/lib/confirm';
 import { fromISODate } from '../src/lib/diet-math';
-import { DIET_FILE_MIMES, formatSize, resolveDietFile, typeOf } from '../src/lib/diet-file-types';
+import { DIET_FILE_MIMES, canImportDiet, formatSize, resolveDietFile, typeOf } from '../src/lib/diet-file-types';
 import { deleteDietFile, dietFileUrl, listDietFiles, uploadDietFile, type DietFile } from '../src/lib/diet-files';
 import { shareRemoteFile } from '../src/lib/export';
 import { readPickedBytes } from '../src/lib/file-bytes';
@@ -35,9 +35,13 @@ export default function DietFiles() {
     if (!checked.ok) return setError(checked.error);
     setBusy(true);
     try {
-      await uploadDietFile(session.user.id, { name: checked.name, mime: checked.mime, ext: checked.ext, bytes: await bytes() });
+      const saved = await uploadDietFile(session.user.id, { name: checked.name, mime: checked.mime, ext: checked.ext, bytes: await bytes() });
       success();
       await reload();
+      // Los Excel y CSV se pueden leer: se ofrece usarlos enseguida para rellenar la dieta.
+      if (canImportDiet(saved) && (await confirm('Usar en mi dieta', '¿Quieres que lea este archivo para rellenar tu planificador y tus objetivos? Antes de aplicar nada verás lo que ha leído.', 'Leer archivo'))) {
+        router.push({ pathname: '/diet-import', params: { id: saved.id } });
+      }
     } catch {
       setError('No se pudo subir el archivo. Comprueba tu conexión e inténtalo de nuevo.');
     } finally {
@@ -105,7 +109,7 @@ export default function DietFiles() {
   return (
     <Screen>
       <Text variant="title">Archivos de dieta</Text>
-      <Text muted>Guarda aquí la dieta que te dé tu dietista (PDF, foto, Word o Excel) y ábrela cuando la necesites. Máximo 10 MB por archivo.</Text>
+      <Text muted>Guarda aquí la dieta que te dé tu dietista (PDF, foto, Word, Excel o CSV) y ábrela cuando la necesites. Si es un Excel (.xlsx) o un CSV, la app puede leerlo para rellenar tu planificador y tus objetivos. Máximo 10 MB por archivo.</Text>
       <ErrorText>{loadError ?? error}</ErrorText>
 
       <Button title="Adjuntar archivo" onPress={() => setMenu(true)} loading={busy} />
@@ -128,6 +132,7 @@ export default function DietFiles() {
               </View>
             </View>
             <View style={{ flexDirection: 'row', gap: spacing.lg }}>
+              {canImportDiet(f) ? <LinkButton title="Usar en mi dieta" onPress={() => router.push({ pathname: '/diet-import', params: { id: f.id } })} /> : null}
               <LinkButton title="Abrir" onPress={() => void open(f)} />
               <LinkButton title="Compartir" onPress={() => void share(f)} />
               <LinkButton title="Eliminar" danger onPress={() => void remove(f)} />

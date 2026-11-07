@@ -20,21 +20,27 @@ export async function listDietFiles(): Promise<DietFile[]> {
 }
 
 /** Sube el archivo al espacio privado y registra su fila; si falla la fila no se deja el archivo huérfano. */
-export async function uploadDietFile(userId: string, file: { name: string; mime: string; ext: string; bytes: Uint8Array }): Promise<void> {
+export async function uploadDietFile(userId: string, file: { name: string; mime: string; ext: string; bytes: Uint8Array }): Promise<DietFile> {
   const path = storagePath(userId, file.ext, Date.now(), Math.random().toString(36).slice(2, 8));
   const up = await supabase.storage.from(BUCKET).upload(path, file.bytes, { contentType: file.mime, upsert: false });
   if (up.error) throw new Error(up.error.message);
-  const { error } = await supabase.from('diet_files').insert({
-    user_id: userId,
-    name: file.name,
-    storage_path: path,
-    mime_type: file.mime,
-    size_bytes: file.bytes.byteLength,
-  });
+  const { data, error } = await supabase
+    .from('diet_files')
+    .insert({ user_id: userId, name: file.name, storage_path: path, mime_type: file.mime, size_bytes: file.bytes.byteLength })
+    .select('*')
+    .single();
   if (error) {
     await supabase.storage.from(BUCKET).remove([path]);
     throw new Error(error.message);
   }
+  return data as DietFile;
+}
+
+/** Descarga el contenido de un archivo guardado (por su URL firmada) para leerlo en el dispositivo. */
+export async function downloadDietFile(file: DietFile): Promise<Uint8Array> {
+  const res = await fetch(await dietFileUrl(file.storage_path));
+  if (!res.ok) throw new Error('No se pudo descargar el archivo.');
+  return new Uint8Array(await res.arrayBuffer());
 }
 
 /** URL temporal (1 h) para abrir o descargar el archivo: el espacio no es público. */
