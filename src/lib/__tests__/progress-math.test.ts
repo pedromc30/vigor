@@ -6,6 +6,9 @@ import {
   macrosForNewKcal,
   movingAverage,
   niceTicks,
+  addMonthsISO,
+  filterByRange,
+  metricValue,
   sessionBests,
   slopePerWeek,
   suggestAdjustment,
@@ -183,6 +186,55 @@ describe('sessionBests', () => {
     ]);
     expect(r.map((s) => [s.sessionId, s.date, s.topWeightKg])).toEqual([['a', '2026-10-10', 60], ['b', '2026-10-20', 62.5]]);
     expect(r[0].est1RM).toBe(76);
+  });
+
+  it('repeticiones totales, volumen y detalle de series en orden', () => {
+    const [a] = sessionBests([
+      { session_id: 'a', weight_kg: 60, reps: 6, rpe: 9, set_index: 1, sort_order: 1, created_at: '2026-10-10T10:05:00Z' },
+      { session_id: 'a', weight_kg: 60, reps: 8, rpe: null, set_index: 0, sort_order: 0, created_at: '2026-10-10T10:00:00Z' },
+    ]);
+    expect(a.totalReps).toBe(14);
+    expect(a.volumeKg).toBe(60 * 8 + 60 * 6);
+    expect(a.sets).toEqual([{ weightKg: 60, reps: 8, rpe: null }, { weightKg: 60, reps: 6, rpe: 9 }]);
+  });
+
+  it('solo cuentan las series normales en todas las métricas', () => {
+    const rows = [
+      { session_id: 'a', weight_kg: 100, reps: 5, set_type: 'normal' as const, created_at: '2026-10-10T10:10:00Z' },
+      { session_id: 'a', weight_kg: 200, reps: 1, set_type: 'warmup' as const, created_at: '2026-10-10T10:00:00Z' },
+      { session_id: 'a', weight_kg: 80, reps: 10, set_type: 'dropset' as const, created_at: '2026-10-10T10:20:00Z' },
+      { session_id: 'w', weight_kg: 50, reps: 10, set_type: 'warmup' as const, created_at: '2026-10-12T10:00:00Z' }, // sesión solo de aproximación
+    ];
+    const r = sessionBests(rows);
+    expect(r).toHaveLength(1); // la sesión que solo tuvo aproximación no existe para el ejercicio
+    expect(r[0]).toMatchObject({ topWeightKg: 100, totalReps: 5, volumeKg: 500 });
+    expect(r[0].est1RM).toBeCloseTo(116.7, 1);
+    expect(r[0].sets).toHaveLength(1);
+  });
+
+  it('metricValue por métrica; 1RM null si solo hay series largas', () => {
+    const [b] = sessionBests([{ session_id: 'a', weight_kg: 60, reps: 8, created_at: '2026-10-10T10:00:00Z' }]);
+    expect([metricValue(b, 'weight'), metricValue(b, '1rm'), metricValue(b, 'reps'), metricValue(b, 'volume')]).toEqual([60, 76, 8, 480]);
+    const [long] = sessionBests([{ session_id: 'a', weight_kg: 20, reps: 30, created_at: '2026-10-10T10:00:00Z' }]);
+    expect(metricValue(long, '1rm')).toBeNull();
+  });
+});
+
+describe('rangos de la evolución', () => {
+  it('addMonthsISO ajusta el día al último del mes', () => {
+    expect(addMonthsISO('2026-10-24', -1)).toBe('2026-09-24');
+    expect(addMonthsISO('2026-03-31', -1)).toBe('2026-02-28');
+    expect(addMonthsISO('2026-01-15', -3)).toBe('2025-10-15');
+    expect(addMonthsISO('2026-10-24', -12)).toBe('2025-10-24');
+  });
+  it('filterByRange: 1 mes, 3 meses, 6 meses, 1 año y todo (incluye el día límite)', () => {
+    const s = ['2025-09-01', '2025-10-24', '2026-04-24', '2026-07-24', '2026-09-24', '2026-10-20'].map((date) => ({ date }));
+    const dates = (r: Parameters<typeof filterByRange>[1]) => filterByRange(s, r, '2026-10-24').map((x) => x.date);
+    expect(dates('1m')).toEqual(['2026-09-24', '2026-10-20']);
+    expect(dates('3m')).toEqual(['2026-07-24', '2026-09-24', '2026-10-20']);
+    expect(dates('6m')).toEqual(['2026-04-24', '2026-07-24', '2026-09-24', '2026-10-20']);
+    expect(dates('1y')).toEqual(['2025-10-24', '2026-04-24', '2026-07-24', '2026-09-24', '2026-10-20']);
+    expect(dates('all')).toHaveLength(6);
   });
 });
 

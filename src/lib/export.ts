@@ -3,8 +3,10 @@ import * as Sharing from 'expo-sharing';
 import { Platform } from 'react-native';
 import { toCsv, type CsvFormat } from './csv';
 import {
+  achievementsTable,
   dietTable,
   foodsTable,
+  goalsTable,
   metricsTable,
   photosTable,
   planTable,
@@ -21,6 +23,8 @@ import { supabase } from './supabase';
 export const DATASETS = [
   { key: 'perfil', label: 'Perfil y objetivos', hint: 'Tus datos, objetivos diarios y el consentimiento.' },
   { key: 'entrenos', label: 'Entrenos', hint: 'Una fila por serie: fecha, ejercicio, peso, repeticiones y RPE.' },
+  { key: 'objetivos', label: 'Objetivos por ejercicio', hint: 'Tus objetivos de peso y repeticiones, y cuándo los conseguiste.' },
+  { key: 'logros', label: 'Logros y récords', hint: 'Objetivos conseguidos y récords personales con su fecha.' },
   { key: 'rutinas', label: 'Rutinas', hint: 'Días, ejercicios, series, repeticiones y descansos.' },
   { key: 'diario', label: 'Diario de comidas', hint: 'Todo lo que has registrado, con sus macros.' },
   { key: 'agua', label: 'Agua', hint: 'Cada registro de agua.' },
@@ -53,6 +57,10 @@ export async function loadTable(key: DatasetKey): Promise<Table> {
     }
     case 'rutinas':
       return routinesTable(await all('routines', '*, routine_exercises(day_index, position, sets, reps_target, reps_min, reps_max, rest_seconds, notes, exercises(name))'));
+    case 'objetivos':
+      return goalsTable(await all('exercise_goals', '*, exercises(name)'));
+    case 'logros':
+      return achievementsTable(await all('achievements', '*, exercises(name)'));
     case 'diario':
       return dietTable(await all('meal_logs', 'log_date, meal, name, quantity_g, servings, kcal, protein_g, carbs_g, fat_g'));
     case 'agua':

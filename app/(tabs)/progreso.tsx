@@ -3,19 +3,26 @@ import { Pressable, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { BarChart, ChartFrame, LineChart } from '../../src/components/charts';
 import { Button, Card, ChipSingle, ErrorText, Screen, Text } from '../../src/components/ui';
+import { PR_LABELS, achievementDetail, achievementTitle, prKindsBySession, type PRKind } from '../../src/lib/achievements';
+import { ensureAchievementsBackfill, listAchievements, listGoals } from '../../src/lib/achievements-data';
 import { addDays, fromISODate, toISODate } from '../../src/lib/diet-math';
 import { loadPref, savePref } from '../../src/lib/local-prefs';
 import { MIN_KCAL } from '../../src/lib/nutrition';
 import { getExerciseSets, getKcalRows, getSessionDates, listMetrics, listTrainedExercises } from '../../src/lib/progress';
+import { listExercises } from '../../src/lib/training';
 import {
   daysBetween,
+  filterByRange,
   kcalByDay,
   macrosForNewKcal,
+  metricValue,
   movingAverage,
   sessionBests,
   suggestAdjustment,
   weeklyAdherence,
   type DatedValue,
+  type EvolutionMetric,
+  type EvolutionRange,
 } from '../../src/lib/progress-math';
 import { formatKg } from '../../src/lib/training-math';
 import { useFocusData } from '../../src/lib/use-focus-data';
@@ -29,22 +36,49 @@ const fmtNum = (n: number) => Math.round(n).toLocaleString('es-ES');
 
 type Range = '30' | '90' | 'all';
 
+const METRIC_OPTIONS: { key: EvolutionMetric; label: string }[] = [
+  { key: 'weight', label: 'Peso máximo' },
+  { key: '1rm', label: '1RM estimado' },
+  { key: 'reps', label: 'Repeticiones' },
+  { key: 'volume', label: 'Volumen' },
+];
+const METRIC_TITLES: Record<EvolutionMetric, string> = {
+  weight: 'Peso máximo de la sesión',
+  '1rm': '1RM estimado (mejor serie)',
+  reps: 'Repeticiones totales',
+  volume: 'Volumen de la sesión',
+};
+const LOAD_RANGE_OPTIONS: { key: EvolutionRange; label: string }[] = [
+  { key: '1m', label: '1 mes' },
+  { key: '3m', label: '3 meses' },
+  { key: '6m', label: '6 meses' },
+  { key: '1y', label: '1 año' },
+  { key: 'all', label: 'Todo' },
+];
+const oneDecimal = (v: number) => String(Math.round(v * 10) / 10).replace('.', ',');
+const formatMetric = (m: EvolutionMetric, v: number) => (m === 'weight' || m === '1rm' ? `${oneDecimal(v)} kg` : m === 'volume' ? `${fmtNum(v)} kg` : `${fmtNum(v)} rep.`);
+
 export default function Progreso() {
   const router = useRouter();
   const { colors } = useTheme();
-  const { profile, saveProfile } = useAuth();
+  const { session, profile, saveProfile } = useAuth();
   const today = toISODate(new Date());
   const since = addDays(today, -8 * 7 - 6);
 
   const { data, error, loading, reload } = useFocusData(async () => {
-    const [metrics, kcalRows, sessionDates, exercises, lastDecision] = await Promise.all([
+    // Reconoce una sola vez los récords del historial anterior (sin celebrarlos) antes de leer los logros.
+    if (session) await ensureAchievementsBackfill(session.user.id);
+    const [metrics, kcalRows, sessionDates, exercises, lastDecision, goals, achievements, catalog] = await Promise.all([
       listMetrics(),
       getKcalRows(since),
       getSessionDates(since),
       listTrainedExercises(),
       loadPref<string | null>(DECISION_KEY, null),
+      listGoals().catch(() => []),
+      listAchievements(1).catch(() => []),
+      listExercises().catch(() => []),
     ]);
-    return { metrics, kcalRows, sessionDates, exercises, lastDecision };
+    return { metrics, kcalRows, sessionDates, exercises, lastDecision, goals, achievements, catalog };
   });
 
   const [range, setRange] = useState<Range>('90');
@@ -53,6 +87,8 @@ export default function Progreso() {
   const [weekSel, setWeekSel] = useState<number | null>(null);
   const [exerciseId, setExerciseId] = useState<string | null>(null);
   const [loadSel, setLoadSel] = useState<number | null>(null);
+  const [metric, setMetric] = useState<EvolutionMetric>('weight');
+  const [loadRange, setLoadRange] = useState<EvolutionRange>('3m');
   const [exSets, setExSets] = useState<Awaited<ReturnType<typeof getExerciseSets>> | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [applying, setApplying] = useState(false);
@@ -106,8 +142,19 @@ export default function Progreso() {
     [kcalDays, target, data, profile, today],
   );
 
-  // ----- Cargas
-  const bests = useMemo(() => (exSets ? sessionBests(exSets) : []), [exSets]);
+  // ----- Cargas: sesiones del ejercicio, dentro del rango y con valor en la métrica elegida
+  const allSessions = useMemo(() => (exSets ? sessionBests(exSets) : []), [exSets]);
+  const prBySession = useMemo(() => (exSets ? prKindsBySession(exSets) : new Map<string, PRKind[]>()), [exSets]);
+  const points = useMemo(
+    () =>
+      filterByRange(allSessions, loadRange, today)
+        .map((b) => ({ b, v: metricValue(b, metric) }))
+        .filter((p): p is { b: (typeof allSessions)[number]; v: number } => p.v != null),
+    [allSessions, loadRange, metric, today],
+  );
+  const recordIdx = points.map((p, i) => (prBySession.has(p.b.sessionId) ? i : -1)).filter((i) => i >= 0);
+  const selectedPoint = loadSel != null ? points[loadSel] : undefined;
+  const exerciseName = data?.exercises.find((e) => e.id === exerciseId)?.name ?? '';
 
   // ----- Ajuste semanal
   const adjustment = useMemo(() => {
@@ -173,6 +220,33 @@ export default function Progreso() {
           <Button title="Fotos" variant="secondary" onPress={() => router.push('/photos')} />
         </View>
       </View>
+
+      <Card>
+        <Text variant="heading">Logros</Text>
+        {(() => {
+          const pending = (data?.goals ?? []).filter((g) => !g.achieved_at).length;
+          const last = data?.achievements[0];
+          const lastName = last ? (data?.catalog.find((e) => e.id === last.exercise_id)?.name ?? '') : '';
+          return (
+            <>
+              <Text muted>
+                {pending === 0 ? 'Sin objetivos pendientes' : pending === 1 ? '1 objetivo pendiente' : `${pending} objetivos pendientes`}
+              </Text>
+              {last ? (
+                <Text variant="caption" muted>
+                  Último: {achievementTitle(last.kind)} · {lastName ? `${lastName} · ` : ''}
+                  {achievementDetail(last)} ({short(last.achieved_at.slice(0, 10))})
+                </Text>
+              ) : (
+                <Text variant="caption" muted>
+                  Tus récords y objetivos conseguidos aparecerán aquí.
+                </Text>
+              )}
+            </>
+          );
+        })()}
+        <Button title="Ver logros y objetivos" variant="secondary" onPress={() => router.push('/achievements')} />
+      </Card>
 
       {adjustment && adjustment.status !== 'cooldown' ? (
         <Card>
@@ -345,30 +419,91 @@ export default function Progreso() {
             })}
           </ScrollView>
         ) : null}
-        {bests.length ? (
-          <ChartFrame
-            title="Mejor carga por sesión"
-            readout={
-              loadSel != null && bests[loadSel]
-                ? `${short(bests[loadSel].date)} · ${formatKg(bests[loadSel].topWeightKg)} kg${bests[loadSel].est1RM ? ` · 1RM estimado ${formatKg(bests[loadSel].est1RM!)} kg` : ''}`
-                : 'Toca un punto para ver el detalle'
-            }
-            table={{ headers: ['Fecha', 'Mejor carga', '1RM est.'], rows: bests.map((b) => [short(b.date), `${formatKg(b.topWeightKg)} kg`, b.est1RM ? `${formatKg(b.est1RM)} kg` : '—']) }}
-          >
-            <LineChart
-              ariaLabel={`Mejor carga por sesión: de ${formatKg(bests[0].topWeightKg)} a ${formatKg(bests[bests.length - 1].topWeightKg)} kilos`}
-              series={[{ label: 'Carga', color: colors.chart1, points: bests.map((b) => ({ t: daysBetween(bests[0].date, b.date), v: b.topWeightKg })) }]}
-              xLabels={[
-                { t: 0, label: short(bests[0].date) },
-                { t: daysBetween(bests[0].date, bests[bests.length - 1].date), label: short(bests[bests.length - 1].date) },
-              ]}
-              format={(v) => String(Math.round(v * 10) / 10).replace('.', ',')}
-              selected={loadSel}
-              onSelect={setLoadSel}
-            />
-          </ChartFrame>
-        ) : exerciseId && exSets ? (
-          <Text muted>Aún no hay sesiones de este ejercicio.</Text>
+
+        {exerciseId && exSets ? (
+          allSessions.length < 2 ? (
+            <Text muted>
+              {allSessions.length === 0
+                ? `Todavía no hay sesiones de «${exerciseName}» con series normales.`
+                : `Solo hay 1 sesión de «${exerciseName}». Registra al menos 2 sesiones para ver su evolución.`}
+            </Text>
+          ) : (
+            <>
+              <ChipSingle
+                value={metric}
+                onChange={(v) => {
+                  setMetric(v ?? 'weight');
+                  setLoadSel(null);
+                }}
+                options={METRIC_OPTIONS}
+              />
+              <ChipSingle
+                value={loadRange}
+                onChange={(v) => {
+                  setLoadRange(v ?? '3m');
+                  setLoadSel(null);
+                }}
+                options={LOAD_RANGE_OPTIONS}
+              />
+              {points.length < 2 ? (
+                <Text muted>
+                  {points.length === 0 && metric === '1rm'
+                    ? 'En este periodo no hay series de hasta 12 repeticiones para estimar el 1RM.'
+                    : 'Hay menos de 2 sesiones de este ejercicio en este periodo. Prueba con un rango mayor.'}
+                </Text>
+              ) : (
+                <ChartFrame
+                  title={METRIC_TITLES[metric]}
+                  subtitle="Solo series normales (sin aproximación ni dropsets)"
+                  readout={
+                    selectedPoint
+                      ? `${long(selectedPoint.b.date)} · ${formatMetric(metric, selectedPoint.v)}${prBySession.has(selectedPoint.b.sessionId) ? ' · récord' : ''}`
+                      : 'Toca un punto para ver la sesión'
+                  }
+                  legend={[
+                    { label: METRIC_TITLES[metric], color: colors.chart1, kind: 'line' },
+                    ...(recordIdx.length ? [{ label: 'Récord personal', color: colors.chart2, kind: 'dot' as const }] : []),
+                  ]}
+                  table={{
+                    headers: ['Fecha', METRIC_OPTIONS.find((m) => m.key === metric)!.label, 'Récord'],
+                    rows: points.map((p) => [short(p.b.date), formatMetric(metric, p.v), prBySession.has(p.b.sessionId) ? 'Sí' : '']),
+                  }}
+                >
+                  <LineChart
+                    ariaLabel={`${METRIC_TITLES[metric]} de ${exerciseName}: de ${formatMetric(metric, points[0].v)} a ${formatMetric(metric, points[points.length - 1].v)}`}
+                    series={[{ label: METRIC_TITLES[metric], color: colors.chart1, points: points.map((p) => ({ t: daysBetween(points[0].b.date, p.b.date), v: p.v })) }]}
+                    xLabels={[
+                      { t: 0, label: short(points[0].b.date) },
+                      { t: daysBetween(points[0].b.date, points[points.length - 1].b.date), label: short(points[points.length - 1].b.date) },
+                    ]}
+                    format={(v) => (metric === 'volume' || metric === 'reps' ? fmtNum(v) : oneDecimal(v))}
+                    selected={loadSel}
+                    onSelect={setLoadSel}
+                    highlights={recordIdx}
+                    highlightColor={colors.chart2}
+                  />
+                </ChartFrame>
+              )}
+
+              {selectedPoint ? (
+                <View style={{ gap: 2, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.sm }}>
+                  <Text variant="label">Sesión del {long(selectedPoint.b.date)}</Text>
+                  {prBySession.get(selectedPoint.b.sessionId)?.length ? (
+                    <Text variant="caption" style={{ color: colors.primary, fontWeight: '600' }}>
+                      Récords: {prBySession.get(selectedPoint.b.sessionId)!.map((k) => PR_LABELS[k].replace('Récord de ', '')).join(', ')}
+                    </Text>
+                  ) : null}
+                  {selectedPoint.b.sets.map((st, i) => (
+                    <Text key={i}>
+                      <Text muted>Serie {i + 1}: </Text>
+                      {formatKg(st.weightKg)} kg × {st.reps}
+                      {st.rpe != null ? <Text muted>{` · RPE ${formatKg(st.rpe)}`}</Text> : null}
+                    </Text>
+                  ))}
+                </View>
+              ) : null}
+            </>
+          )
         ) : null}
       </Card>
     </Screen>

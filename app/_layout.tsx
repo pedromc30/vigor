@@ -57,6 +57,8 @@ function RootStack() {
         <Stack.Screen name="edit-targets" options={{ presentation: 'modal' }} />
         <Stack.Screen name="exercises" />
         <Stack.Screen name="history" />
+        <Stack.Screen name="achievements" />
+        <Stack.Screen name="goal-edit" />
         <Stack.Screen name="routine/[id]" />
         <Stack.Screen name="routine-edit" />
         <Stack.Screen name="workout/[id]" options={{ gestureEnabled: false }} />

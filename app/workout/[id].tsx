@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, TextInput, View } from 'react-native';
+import { Pressable, TextInput, Vibration, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { AchievementToast } from '../../src/components/achievement-toast';
 import { ActionSheet } from '../../src/components/action-sheet';
 import { ExercisePicker } from '../../src/components/exercise-picker';
 import { ReorderSheet } from '../../src/components/reorder-sheet';
 import { ElapsedClock, RestBar, RestDoneToast, type RestState } from '../../src/components/rest-timer';
 import { RPE_OPTIONS, SelectField } from '../../src/components/select-field';
 import { Button, Card, ErrorText, LinkButton, Screen, Text } from '../../src/components/ui';
+import { celebrations, detectPRs, goalMet, type Celebration } from '../../src/lib/achievements';
+import { listGoals, recordAchievements, reopenGoal, type Goal } from '../../src/lib/achievements-data';
 import { confirm } from '../../src/lib/confirm';
 import {
   insertAt,
@@ -22,6 +25,7 @@ import {
   targetLabel,
   warmupInsertIndex,
 } from '../../src/lib/plan';
+import { getExerciseSets } from '../../src/lib/progress';
 import { syncRestNotification } from '../../src/lib/rest-notification';
 import {
   bySetOrder,
@@ -126,6 +130,30 @@ export default function Workout() {
   const [menu, setMenu] = useState<{ pos: number; rowId: string } | null>(null);
   const [finishing, setFinishing] = useState(false);
 
+  // Logros: objetivos pendientes, historial de series normales por ejercicio (para detectar récords) y avisos en cola.
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [toasts, setToasts] = useState<Celebration[]>([]);
+  const history = useRef(new Map<string, { id: string; weightKg: number; reps: number }[]>());
+  const goalsBySet = useRef(new Map<string, string[]>());
+  const nextToast = useCallback(() => setToasts((q) => q.slice(1)), []);
+
+  useEffect(() => {
+    listGoals().then(setGoals).catch(() => undefined); // sin objetivos o sin red: los récords se detectan igual
+  }, []);
+
+  /** Series normales anteriores de un ejercicio; null si no se pueden leer (entonces no se detectan logros). */
+  const priorSets = async (exerciseId: string) => {
+    const cached = history.current.get(exerciseId);
+    if (cached) return cached;
+    try {
+      const rows = (await getExerciseSets(exerciseId)).map((r) => ({ id: r.id, weightKg: r.weight_kg, reps: r.reps }));
+      if (!history.current.has(exerciseId)) history.current.set(exerciseId, rows); // si mientras tanto se guardó una serie, manda la caché
+      return history.current.get(exerciseId) ?? rows;
+    } catch {
+      return null;
+    }
+  };
+
   useEffect(() => {
     (async () => {
       try {
@@ -136,6 +164,8 @@ export default function Workout() {
         setSession(s);
         setPrev(previous);
         setRows(s.plan.map((p, pos) => buildRows(p, pos, sets, newRowId, previous[p.exercise_id])));
+        // Se lee ya el historial de cada ejercicio, para detectar récords aunque luego se pierda la conexión.
+        for (const p of s.plan) void priorSets(p.exercise_id);
       } catch {
         setLoadError('No se pudo cargar la sesión. Comprueba tu conexión.');
       }
@@ -193,6 +223,15 @@ export default function Workout() {
       try {
         await deleteSet(row.dbId);
         patchRow(rowId, { dbId: null, sortOrder: null, busy: false });
+        // Los logros de esa serie desaparecen con ella (en la base de datos); aquí se reabren los objetivos que dio por cumplidos.
+        const hist = history.current.get(item.exercise_id);
+        if (hist) history.current.set(item.exercise_id, hist.filter((h) => h.id !== row.dbId));
+        const reopened = goalsBySet.current.get(row.dbId) ?? [];
+        if (reopened.length) {
+          goalsBySet.current.delete(row.dbId);
+          setGoals((gs) => gs.map((g) => (reopened.includes(g.id) ? { ...g, achieved_at: null } : g)));
+          for (const gid of reopened) void reopenGoal(gid).catch(() => undefined);
+        }
       } catch {
         patchRow(rowId, { busy: false });
         setError('No se pudo deshacer la serie. Comprueba tu conexión.');
@@ -210,6 +249,8 @@ export default function Workout() {
       return setError(`${item.name}: el RPE debe estar entre 1 y 10.`);
 
     patchRow(rowId, { busy: true });
+    // Solo las series normales pueden dar logros; el historial se lee antes de guardar para no contar la propia serie.
+    const prior = row.type === 'normal' ? await priorSets(item.exercise_id) : null;
     try {
       const saved = await saveSet({
         session_id: session.id,
@@ -226,6 +267,27 @@ export default function Workout() {
       });
       patchRow(rowId, { dbId: saved.id, sortOrder: index, busy: false });
       tap();
+      if (prior) {
+        const set = { weightKg: weight, reps };
+        const prs = detectPRs(prior, set);
+        const met = goals.filter((g) => g.exercise_id === item.exercise_id && !g.achieved_at && goalMet(g, set));
+        history.current.set(item.exercise_id, [...prior, { id: saved.id, ...set }]);
+        if (prs.length || met.length) {
+          const msgs = celebrations(item.name, prs, met);
+          setToasts((q) => [...q, ...msgs]);
+          success();
+          Vibration.vibrate([0, 150, 80, 150, 80, 300]);
+          if (met.length) {
+            goalsBySet.current.set(saved.id, met.map((g) => g.id));
+            setGoals((gs) => gs.map((g) => (met.some((m) => m.id === g.id) ? { ...g, achieved_at: new Date().toISOString() } : g)));
+          }
+          void recordAchievements(
+            { userId: auth.user.id, exerciseId: item.exercise_id, sessionId: session.id, setId: saved.id, weightKg: weight, reps },
+            prs,
+            met,
+          ).catch(() => undefined); // el entreno no depende de esto
+        }
+      }
       if (item.rest_seconds > 0) {
         setRest({ endsAt: Date.now() + item.rest_seconds * 1000, total: item.rest_seconds });
         setRestDone(false);
@@ -444,6 +506,7 @@ export default function Workout() {
 
       {rest ? <RestBar rest={rest} onChange={onRestChange} onFinished={onRestFinished} /> : null}
       <RestDoneToast visible={restDone} onHide={hideRestDone} />
+      <AchievementToast queue={toasts} onNext={nextToast} />
 
       <ExercisePicker visible={picker} onClose={() => setPicker(false)} onPick={(e) => void addExercise(e)} />
 

@@ -129,6 +129,8 @@ export function LineChart({
   referenceLine,
   selected,
   onSelect,
+  highlights,
+  highlightColor,
   ariaLabel,
 }: {
   series: LineSeries[];
@@ -139,6 +141,9 @@ export function LineChart({
   /** Índice del punto seleccionado dentro de la serie 0. */
   selected?: number | null;
   onSelect?: (index: number) => void;
+  /** Índices de puntos de la serie 0 que se marcan aparte (p. ej. récords personales), siempre visibles. */
+  highlights?: number[];
+  highlightColor?: string;
   ariaLabel: string;
 }) {
   const { colors } = useTheme();
@@ -211,7 +216,13 @@ export function LineChart({
             ? s.points.map((p, i) => <Circle key={`${s.label}${i}`} cx={x(p.t)} cy={y(p.v)} r={4} fill={s.color} stroke={colors.surface} strokeWidth={2} />)
             : null,
         )}
-        {sel ? <Circle cx={x(sel.t)} cy={y(sel.v)} r={6} fill={series[0].color} stroke={colors.surface} strokeWidth={2} /> : null}
+        {highlights?.map((i) => {
+          const p = series[0]?.points[i];
+          return p ? (
+            <Circle key={`hl${i}`} cx={x(p.t)} cy={y(p.v)} r={6.5} fill={highlightColor ?? series[0].color} stroke={colors.surface} strokeWidth={2} />
+          ) : null;
+        })}
+        {sel ? <Circle cx={x(sel.t)} cy={y(sel.v)} r={6} fill={highlights?.includes(selected as number) ? (highlightColor ?? series[0].color) : series[0].color} stroke={colors.text} strokeWidth={2} /> : null}
         {onSelect
           ? series[0].points.map((p, i) => (
               <Circle key={`hit${i}`} cx={x(p.t)} cy={y(p.v)} r={16} fill="transparent" onPress={() => onSelect(i)} />

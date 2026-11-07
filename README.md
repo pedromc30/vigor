@@ -46,6 +46,17 @@ App móvil (Expo + React Native + TypeScript, backend Supabase) que combina entr
 - **RPE** con desplegable de 1 a 10 (más «Sin RPE»). Los valores antiguos con decimales se siguen mostrando tal cual en las series ya registradas.
 - **Aviso de fin de descanso:** al empezar el descanso se programa una notificación local para su hora de fin (se cancela y se reprograma al saltar, alargar o acortar). Con la app abierta no sale la notificación: la pantalla vibra y muestra un aviso. Pide el permiso de notificaciones la primera vez que se usa el temporizador. **Requiere una build de EAS** (no funciona en Expo Go para Android, igual que los recordatorios).
 
+### Logros y evolución de cargas (migración `0007_goals_achievements.sql`)
+
+- **Objetivos por ejercicio** (`exercise_goals`): «peso × repeticiones», de carga (sentadilla 100 kg × 1) o de repeticiones con un peso dado (dominadas 12 reps con peso corporal = 0 kg; press de banca 80 kg × 8). Se cumplen con una serie *normal* que alcance a la vez la carga y las repeticiones. Se crean, editan y borran desde Progreso → Logros. Un objetivo que ya está cumplido con el historial se rechaza (hay que pedir uno mayor). El progreso en % es la mejor marca actual frente al objetivo (nunca marca 100 % sin cumplirlo).
+- **Récords personales automáticos**, al guardar cada serie normal (la regla está en `src/lib/achievements.ts`): de **peso** (más carga que nunca), de **repeticiones** (más repeticiones que nunca con un peso igual o mayor) y de **1RM estimado** (Epley, hasta 12 repeticiones). La primera serie de un ejercicio solo fija la marca de partida. Las series de aproximación y los dropsets **no** generan logros ni récords.
+- **Celebración** al conseguir un récord o un objetivo: aviso breve con vibración, sin bloquear el entreno (si se consiguen varios, salen en cola). Cada logro se guarda en `achievements` con fecha, ejercicio, valor y la serie que lo consiguió.
+- **Historial anterior:** la primera vez que se abre Progreso o Logros se recorre el historial con la misma regla y los récords que ya había se guardan **sin celebrarlos** (es idempotente y se hace una vez por usuario).
+- **Deshacer una serie** (o borrar su sesión) elimina sus logros en cascada, y si era el que cumplía un objetivo, el objetivo vuelve a estar pendiente (trigger de la base de datos).
+- **Sin conexión:** los logros y los cambios de objetivos se encolan como las series; los récords se detectan con el historial leído al empezar la sesión (si no se pudo leer, no se detectan logros esa vez, pero la serie se guarda igual).
+- **Evolución de cargas** (Progreso): selector de ejercicio, de métrica (peso máximo, 1RM estimado, repeticiones totales o volumen de la sesión) y de rango (1 mes, 3 meses, 6 meses, 1 año, todo). Solo series normales. Los puntos con récord se marcan en naranja; al tocar un punto se ve la sesión (series con peso × repeticiones × RPE). Con menos de 2 sesiones del ejercicio se explica por qué no hay gráfica.
+- Los objetivos y los logros están en la **exportación CSV** y se borran con la cuenta.
+
 ## Dieta (Fase 3)
 
 - Diario por comidas (desayuno, comida, merienda, cena, snacks) con barras de kcal, proteína, carbohidratos, grasa y agua frente a tus objetivos. Cada entrada guarda una copia de los macros del momento: editar o borrar un alimento después no cambia el historial.

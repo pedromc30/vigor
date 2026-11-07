@@ -1,8 +1,8 @@
 // Lógica pura de progreso: tendencias de peso, adherencia, racha y ajuste semanal de calorías.
-import { addDays, fromISODate, isoWeekday, type Macros } from './diet-math';
+import { addDays, fromISODate, isoWeekday, toISODate, type Macros } from './diet-math';
 import type { Goal } from './nutrition';
 import { KCAL_PER_G } from './nutrition';
-import { bestEstimated1RM } from './training-math';
+import { bestEstimated1RM, isNormalSet, type SetType } from './training-math';
 
 export interface DatedValue {
   date: string; // AAAA-MM-DD
@@ -246,28 +246,104 @@ export function macrosForNewKcal(kcal: number, proteinG: number, fatG: number): 
 
 // ---------- Evolución de cargas ----------
 
+/** Serie de un ejercicio tal y como se lee de la base de datos. */
+export interface ExerciseSetRow {
+  id?: string;
+  session_id: string;
+  weight_kg: number;
+  reps: number;
+  rpe?: number | null;
+  set_index?: number;
+  sort_order?: number | null;
+  /** Sin tipo = normal. */
+  set_type?: SetType;
+  created_at: string;
+}
+
+export interface SessionSetDetail {
+  weightKg: number;
+  reps: number;
+  rpe: number | null;
+}
+
 export interface SessionBest {
   sessionId: string;
   date: string;
   topWeightKg: number;
   est1RM: number | null;
+  /** Repeticiones totales de la sesión. */
+  totalReps: number;
+  /** Volumen: suma de peso × repeticiones. */
+  volumeKg: number;
+  /** Series de la sesión, en el orden en que se hicieron. */
+  sets: SessionSetDetail[];
 }
 
-/** Mejor peso y mejor 1RM estimado de cada sesión para un ejercicio, en orden cronológico. */
-export function sessionBests(sets: { session_id: string; weight_kg: number; reps: number; created_at: string }[]): SessionBest[] {
-  const bySession = new Map<string, typeof sets>();
-  for (const s of sets) bySession.set(s.session_id, [...(bySession.get(s.session_id) ?? []), s]);
+/**
+ * Resumen por sesión de un ejercicio, en orden cronológico. Solo cuentan las series normales: ni las de
+ * aproximación ni los dropsets entran en ninguna métrica.
+ */
+export function sessionBests(rows: ExerciseSetRow[]): SessionBest[] {
+  const bySession = new Map<string, ExerciseSetRow[]>();
+  for (const s of rows) {
+    if (!isNormalSet({ type: s.set_type })) continue;
+    bySession.set(s.session_id, [...(bySession.get(s.session_id) ?? []), s]);
+  }
   return [...bySession.entries()]
-    .map(([sessionId, ss]) => ({
-      sessionId,
-      date: ss.map((s) => s.created_at).sort()[0].slice(0, 10),
-      topWeightKg: Math.max(...ss.map((s) => s.weight_kg)),
-      est1RM: (() => {
-        const v = bestEstimated1RM(ss.map((s) => ({ weightKg: s.weight_kg, reps: s.reps })));
-        return v == null ? null : r1(v);
-      })(),
-    }))
+    .map(([sessionId, unsorted]) => {
+      const ss = [...unsorted].sort(
+        (a, b) => (a.sort_order ?? a.set_index ?? 0) - (b.sort_order ?? b.set_index ?? 0) || a.created_at.localeCompare(b.created_at),
+      );
+      const data = ss.map((s) => ({ weightKg: s.weight_kg, reps: s.reps }));
+      const est = bestEstimated1RM(data);
+      return {
+        sessionId,
+        date: ss.map((s) => s.created_at).sort()[0].slice(0, 10),
+        topWeightKg: Math.max(...ss.map((s) => s.weight_kg)),
+        est1RM: est == null ? null : r1(est),
+        totalReps: ss.reduce((n, s) => n + s.reps, 0),
+        volumeKg: ss.reduce((n, s) => n + s.weight_kg * s.reps, 0),
+        sets: ss.map((s) => ({ weightKg: s.weight_kg, reps: s.reps, rpe: s.rpe ?? null })),
+      };
+    })
     .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+export type EvolutionMetric = 'weight' | '1rm' | 'reps' | 'volume';
+export type EvolutionRange = '1m' | '3m' | '6m' | '1y' | 'all';
+
+/** Valor de una sesión en la métrica elegida (null si no se puede calcular, p. ej. 1RM con solo series largas). */
+export function metricValue(b: SessionBest, metric: EvolutionMetric): number | null {
+  switch (metric) {
+    case 'weight':
+      return b.topWeightKg;
+    case '1rm':
+      return b.est1RM;
+    case 'reps':
+      return b.totalReps;
+    case 'volume':
+      return b.volumeKg;
+  }
+}
+
+const RANGE_MONTHS: Record<Exclude<EvolutionRange, 'all'>, number> = { '1m': 1, '3m': 3, '6m': 6, '1y': 12 };
+
+/** Fecha ISO `n` meses antes/después (el día se ajusta al último del mes si hace falta). */
+export function addMonthsISO(iso: string, n: number): string {
+  const d = fromISODate(iso);
+  const day = d.getDate();
+  d.setDate(1);
+  d.setMonth(d.getMonth() + n);
+  const last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+  d.setDate(Math.min(day, last));
+  return toISODate(d);
+}
+
+/** Sesiones dentro del rango temporal, contando hacia atrás desde `today`. */
+export function filterByRange<T extends { date: string }>(sessions: T[], range: EvolutionRange, today: string): T[] {
+  if (range === 'all') return sessions;
+  const from = addMonthsISO(today, -RANGE_MONTHS[range]);
+  return sessions.filter((s) => s.date >= from);
 }
 
 // ---------- Ejes de gráficas ----------

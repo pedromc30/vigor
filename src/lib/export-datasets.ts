@@ -145,3 +145,25 @@ export function planTable(rows: (Entry & { weekday: number })[]): Table {
 export function photosTable(rows: { taken_on: string; storage_path: string; note: string }[]): Table {
   return { filename: 'fotos', headers: ['fecha', 'archivo', 'nota'], rows: rows.map((p) => [p.taken_on, p.storage_path.split('/').pop() ?? '', p.note] as Cell[]) };
 }
+
+const PR_NAMES: Record<string, string> = { goal: 'objetivo_conseguido', pr_weight: 'record_peso', pr_reps: 'record_repeticiones', pr_1rm: 'record_1rm' };
+
+export function goalsTable(rows: { kind: string; target_weight_kg: number; target_reps: number; achieved_at: string | null; created_at: string; exercises: { name: string } | null }[]): Table {
+  return {
+    filename: 'objetivos',
+    headers: ['ejercicio', 'tipo', 'peso_objetivo_kg', 'repeticiones_objetivo', 'creado', 'conseguido'],
+    rows: [...rows]
+      .sort((a, b) => a.created_at.localeCompare(b.created_at))
+      .map((g) => [g.exercises?.name ?? '', g.kind === 'weight' ? 'peso' : 'repeticiones', Number(g.target_weight_kg), g.target_reps, date(g.created_at), date(g.achieved_at)] as Cell[]),
+  };
+}
+
+export function achievementsTable(rows: { kind: string; value: number; weight_kg: number; reps: number; achieved_at: string; exercises: { name: string } | null }[]): Table {
+  return {
+    filename: 'logros',
+    headers: ['fecha', 'ejercicio', 'tipo', 'valor', 'peso_kg', 'repeticiones'],
+    rows: [...rows]
+      .sort((a, b) => a.achieved_at.localeCompare(b.achieved_at))
+      .map((a) => [date(a.achieved_at), a.exercises?.name ?? '', PR_NAMES[a.kind] ?? a.kind, Number(a.value), Number(a.weight_kg), a.reps] as Cell[]),
+  };
+}

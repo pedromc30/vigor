@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { toISODate } from './diet-math';
+import type { ExerciseSetRow } from './progress-math';
 
 const BUCKET = 'progress-photos';
 const PAGE = 1000; // límite por petición de la API de Supabase
@@ -142,22 +143,24 @@ export async function getSessionDates(since: string): Promise<string[]> {
 export async function listTrainedExercises(): Promise<{ id: string; name: string }[]> {
   const rows = (await selectAll<{ exercise_id: string; exercises: { name: string } | null }>(
     (from, to) =>
-      supabase.from('workout_sets').select('exercise_id, exercises(name)').neq('set_type', 'warmup').order('created_at', { ascending: false }).range(from, to) as never,
+      supabase.from('workout_sets').select('exercise_id, exercises(name)').eq('set_type', 'normal').order('created_at', { ascending: false }).range(from, to) as never,
   )) as { exercise_id: string; exercises: { name: string } | null }[];
   const seen = new Map<string, string>();
   for (const r of rows) if (r.exercises && !seen.has(r.exercise_id)) seen.set(r.exercise_id, r.exercises.name);
   return [...seen.entries()].map(([id, name]) => ({ id, name }));
 }
 
-export async function getExerciseSets(exerciseId: string) {
-  const rows = await selectAll<{ session_id: string; weight_kg: number; reps: number; created_at: string }>((from, to) =>
+/** Series normales de un ejercicio (sin aproximación ni dropsets), para la gráfica de evolución y los récords. */
+export async function getExerciseSets(exerciseId: string): Promise<(ExerciseSetRow & { id: string })[]> {
+  const rows = await selectAll<ExerciseSetRow & { id: string }>((from, to) =>
     supabase
       .from('workout_sets')
-      .select('session_id, weight_kg, reps, created_at')
+      .select('id, session_id, weight_kg, reps, rpe, set_index, sort_order, set_type, created_at')
       .eq('exercise_id', exerciseId)
-      .neq('set_type', 'warmup') // la aproximación no cuenta para el 1RM
+      .eq('set_type', 'normal')
       .order('created_at')
+      .order('id')
       .range(from, to),
   );
-  return rows.map((r) => ({ ...r, weight_kg: Number(r.weight_kg) }));
+  return rows.map((r) => ({ ...r, weight_kg: Number(r.weight_kg), rpe: r.rpe == null ? null : Number(r.rpe) }));
 }

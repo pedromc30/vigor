@@ -1,4 +1,4 @@
-import { dietTable, foodsTable, metricsTable, photosTable, planTable, profileTable, recipesTable, routinesTable, waterTable, workoutsTable } from '../export-datasets';
+import { achievementsTable, goalsTable, dietTable, foodsTable, metricsTable, photosTable, planTable, profileTable, recipesTable, routinesTable, waterTable, workoutsTable } from '../export-datasets';
 
 describe('workoutsTable', () => {
   const sessions = [
@@ -74,6 +74,22 @@ describe('otras tablas', () => {
     }
     expect(tables[6].rows[0][1]).toBe('2026-10-24-1.jpg'); // no se exporta el id del usuario de la ruta
     expect(tables[5].rows[0][0]).toBe('lunes');
+  });
+  it('objetivos y logros: tipos legibles y columnas coherentes', () => {
+    const g = goalsTable([
+      { kind: 'reps', target_weight_kg: 0, target_reps: 12, achieved_at: null, created_at: '2026-10-02T10:00:00Z', exercises: { name: 'Dominadas' } },
+      { kind: 'weight', target_weight_kg: 100, target_reps: 1, achieved_at: '2026-10-20T10:00:00Z', created_at: '2026-10-01T10:00:00Z', exercises: { name: 'Sentadilla' } },
+    ]);
+    expect(g.rows.map((r) => [r[0], r[1], r[2], r[3], r[4], r[5]])).toEqual([
+      ['Sentadilla', 'peso', 100, 1, '2026-10-01', '2026-10-20'],
+      ['Dominadas', 'repeticiones', 0, 12, '2026-10-02', ''],
+    ]);
+    const a = achievementsTable([
+      { kind: 'pr_1rm', value: 120.3, weight_kg: 95, reps: 8, achieved_at: '2026-10-12T10:00:00Z', exercises: { name: 'Press' } },
+      { kind: 'goal', value: 100, weight_kg: 100, reps: 1, achieved_at: '2026-10-10T10:00:00Z', exercises: null },
+    ]);
+    expect(a.rows.map((r) => [r[0], r[1], r[2]])).toEqual([['2026-10-10', '', 'objetivo_conseguido'], ['2026-10-12', 'Press', 'record_1rm']]);
+    for (const t of [g, a]) for (const r of t.rows) expect(r).toHaveLength(t.headers.length);
   });
   it('ordena el diario por fecha', () => {
     const e = { meal: 'comida', name: 'x', quantity_g: 1, servings: null, kcal: 1, protein_g: 1, carbs_g: 1, fat_g: 1 };

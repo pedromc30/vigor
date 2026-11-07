@@ -28,6 +28,8 @@ const STAMP_COLUMN: Record<string, string> = {
   meal_logs: 'created_at',
   water_logs: 'created_at',
   body_metrics: 'created_at',
+  exercise_goals: 'created_at',
+  achievements: 'achieved_at',
 };
 
 const JSON_HEADERS = { 'content-type': 'application/json' };

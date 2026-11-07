@@ -4,7 +4,7 @@
 export type Row = Record<string, unknown>;
 
 /** Tablas cuyas escrituras se pueden hacer sin conexión y sincronizar después. */
-export const QUEUEABLE_TABLES = ['workout_sessions', 'workout_sets', 'meal_logs', 'water_logs', 'body_metrics'] as const;
+export const QUEUEABLE_TABLES = ['workout_sessions', 'workout_sets', 'meal_logs', 'water_logs', 'body_metrics', 'exercise_goals', 'achievements'] as const;
 export const isQueueable = (table: string) => (QUEUEABLE_TABLES as readonly string[]).includes(table);
 
 const RESERVED = new Set(['select', 'order', 'limit', 'offset', 'on_conflict', 'columns']);
@@ -135,6 +135,10 @@ export function defaultsFor(table: string, nowIso: string): Row {
       return { food_id: null, recipe_id: null, quantity_g: null, servings: null, created_at: nowIso };
     case 'water_logs':
       return { created_at: nowIso };
+    case 'exercise_goals':
+      return { achieved_at: null, created_at: nowIso, updated_at: nowIso };
+    case 'achievements':
+      return { goal_id: null, set_id: null, session_id: null, achieved_at: nowIso };
     case 'body_metrics':
       return { weight_kg: null, waist_cm: null, hip_cm: null, arm_cm: null, thigh_cm: null, created_at: nowIso, updated_at: nowIso };
     default:
