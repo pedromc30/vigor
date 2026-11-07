@@ -23,7 +23,7 @@ export interface ImportTargets {
   fat_g?: number;
 }
 
-export type ImportLayout = 'grid' | 'transposed' | 'list' | 'none';
+export type ImportLayout = 'grid' | 'transposed' | 'list' | 'pdf' | 'none';
 
 export interface ParsedDiet {
   layout: ImportLayout;
@@ -105,7 +105,7 @@ export function gramsIn(text: string): { grams: number; rest: string } | null {
   if (!m) return null;
   const grams = parseNumber(m[1]);
   if (grams === null || grams <= 0 || grams > 5000) return null;
-  const rest = (text.slice(0, m.index) + ' ' + text.slice(m.index + m[0].length)).replace(/[()]/g, ' ').replace(/\s+(de|del)\s*$/i, '').replace(/^\s*(de|del)\s+/i, '').replace(/\s+/g, ' ').replace(/^[\s,;:–-]+|[\s,;:–-]+$/g, '');
+  const rest = (text.slice(0, m.index) + ' ' + text.slice(m.index + m[0].length)).replace(/[()]/g, ' ').replace(/\s+(de|del)\s*$/i, '').replace(/^\s*(de|del)\s+/i, '').replace(/\s+/g, ' ').replace(/\b(de|del) (de|del)\b/gi, '$2').replace(/([:,]) (?:de|del) /gi, '$1 ').replace(/^[\s,;:–-]+|[\s,;:–-]+$/g, '');
   return { grams, rest: rest || text.trim() };
 }
 
@@ -351,6 +351,7 @@ export const LAYOUT_LABELS: Record<ImportLayout, string> = {
   grid: 'Días en columnas y comidas en filas',
   transposed: 'Días en filas y comidas en columnas',
   list: 'Una fila por alimento',
+  pdf: 'PDF: un menú por día',
   none: 'Sin reconocer',
 };
 

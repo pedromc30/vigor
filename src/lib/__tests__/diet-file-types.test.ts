@@ -51,7 +51,7 @@ describe('CSV e importación', () => {
     expect(canImportDiet({ name: 'a.xlsx' })).toBe(true);
     expect(canImportDiet({ name: 'a.CSV' })).toBe(true);
     expect(canImportDiet({ name: 'a', mime_type: 'text/csv' })).toBe(true);
-    for (const name of ['a.pdf', 'a.xls', 'a.docx', 'a.jpg', 'a.txt']) expect(canImportDiet({ name })).toBe(false);
+    for (const name of ['a.xls', 'a.docx', 'a.jpg', 'a.txt']) expect(canImportDiet({ name })).toBe(false);
   });
 });
 

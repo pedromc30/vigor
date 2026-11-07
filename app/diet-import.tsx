@@ -8,6 +8,7 @@ import { LAYOUT_LABELS, daysWithEntries, draftsByWeekday, parseDietSheets, type 
 import { downloadDietFile, listDietFiles, type DietFile } from '../src/lib/diet-files';
 import { MEAL_LABELS } from '../src/lib/diet-math';
 import { WEEKDAY_LONG } from '../src/lib/labels';
+import { parseDietPdf } from '../src/lib/diet-pdf';
 import { SpreadsheetError, readSpreadsheet } from '../src/lib/spreadsheet';
 import { success } from '../src/lib/haptics';
 import { formatKg } from '../src/lib/training-math';
@@ -40,7 +41,8 @@ export default function DietImport() {
         if (!f) return setError('No se encontró el archivo.');
         setFile(f);
         const [bytes, plan] = await Promise.all([downloadDietFile(f), listPlan().catch(() => [])]);
-        const result = parseDietSheets(readSpreadsheet(bytes, f.name));
+        const isPdf = f.mime_type === 'application/pdf' || /\.pdf$/i.test(f.name);
+        const result = isPdf ? parseDietPdf(bytes) : parseDietSheets(readSpreadsheet(bytes, f.name));
         setParsed(result);
         setDays(new Set(daysWithEntries(result.entries)));
         setExisting(plan.length);

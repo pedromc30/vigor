@@ -109,7 +109,7 @@ export default function DietFiles() {
   return (
     <Screen>
       <Text variant="title">Archivos de dieta</Text>
-      <Text muted>Guarda aquí la dieta que te dé tu dietista (PDF, foto, Word, Excel o CSV) y ábrela cuando la necesites. Si es un Excel (.xlsx) o un CSV, la app puede leerlo para rellenar tu planificador y tus objetivos. Máximo 10 MB por archivo.</Text>
+      <Text muted>Guarda aquí la dieta que te dé tu dietista (PDF, foto, Word, Excel o CSV) y ábrela cuando la necesites. Si es un Excel (.xlsx), un CSV o un PDF con texto, la app puede leerlo para rellenar tu planificador y tus objetivos. Máximo 10 MB por archivo.</Text>
       <ErrorText>{loadError ?? error}</ErrorText>
 
       <Button title="Adjuntar archivo" onPress={() => setMenu(true)} loading={busy} />

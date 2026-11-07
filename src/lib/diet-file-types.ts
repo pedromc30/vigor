@@ -76,8 +76,8 @@ export function typeOf(mime: string): DietFileType {
   return DIET_FILE_TYPES.find((t) => t.mime === mime) ?? { ext: '', mime, label: 'Archivo', icon: 'document-outline' };
 }
 
-/** ¿Se puede leer este archivo para rellenar la dieta? Excel moderno (.xlsx) y CSV. */
+/** ¿Se puede leer este archivo para rellenar la dieta? Excel moderno (.xlsx), CSV y PDF con texto. */
 export function canImportDiet(file: { name: string; mime_type?: string }): boolean {
   const ext = extOf(file.name);
-  return ext === 'xlsx' || ext === 'csv' || file.mime_type === 'text/csv' || file.mime_type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+  return ext === 'xlsx' || ext === 'csv' || ext === 'pdf' || file.mime_type === 'application/pdf' || file.mime_type === 'text/csv' || file.mime_type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 }
