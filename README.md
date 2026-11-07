@@ -76,6 +76,10 @@ App móvil (Expo + React Native + TypeScript, backend Supabase) que combina entr
   - Formatos que reconoce: días en columnas y comidas en filas; días en filas y comidas en columnas; y una fila por alimento con columnas «Día», «Comida» y «Alimento» (y opcionalmente cantidad, kcal y macros). Las celdas con varios alimentos se separan por salto de línea, «;» o « + », y se reconocen cantidades como «150 g de pollo» o «250 ml de leche».
   - **Límites:** no lee PDF, Word ni fotos, ni Excel antiguos (`.xls`; hay que guardarlos como `.xlsx` o CSV). Las calorías y macros solo se rellenan si el archivo las trae por alimento (formato de lista); si no, los alimentos entran sin calorías (1 ración o la cantidad en gramos). Una hoja con otra estructura no se reconoce y se explica qué busca la app. Ver `src/lib/diet-import.ts` para las reglas exactas.
 
+## Diseño
+
+Estilo de «baldosas suaves»: fondo gris azulado, tarjetas blancas redondeadas, acento índigo y un tono pastel por zona (Entreno azul, Dieta menta, Progreso ámbar), con modo oscuro equivalente. Tipografía Figtree (cargada con `expo-font`; si falla, se usa la del sistema). Los colores y radios están en `src/theme/index.ts` y los componentes comunes (`Card` con `tone`, `Button`, `LinkRow`, chips…) en `src/components/ui.tsx`. Las fuentes nuevas no se han probado en un Android real.
+
 ## Notas de dependencias
 
 Las versiones de los módulos nativos están fijadas a las que incluye Expo Go para el SDK 58 (`node_modules/expo/bundledNativeModules.json`). Importante: `@react-native-async-storage/async-storage` debe ser la **2.2.0**; la 3.x necesita un módulo nativo que Expo Go no trae y rompe el inicio de sesión en el móvil.
