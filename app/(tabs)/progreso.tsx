@@ -221,7 +221,7 @@ export default function Progreso() {
         </View>
       </View>
 
-      <Card>
+      <Card tone="amber">
         <Text variant="heading">Logros</Text>
         {(() => {
           const pending = (data?.goals ?? []).filter((g) => !g.achieved_at).length;

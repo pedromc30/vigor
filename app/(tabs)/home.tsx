@@ -153,7 +153,7 @@ export default function Inicio() {
         <LinkButton title="Registrar peso" onPress={() => router.push('/weight')} />
       </View>
 
-      <Card>
+      <Card tone="mint">
         <Text variant="heading">Entreno de hoy</Text>
         {data?.active ? (
           <>
@@ -176,7 +176,7 @@ export default function Inicio() {
         )}
       </Card>
 
-      <Card>
+      <Card tone="blue">
         <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}>
           <Text variant="heading">Agua</Text>
           <Text>

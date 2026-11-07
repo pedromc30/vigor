@@ -47,7 +47,7 @@ export default function Entreno() {
       <ErrorText>{actionError}</ErrorText>
 
       {data?.active ? (
-        <Card>
+        <Card tone="blue">
           <Text variant="label">Sesión en curso</Text>
           <Text muted>{data.active.routine_name}</Text>
           <Button
@@ -78,7 +78,7 @@ export default function Entreno() {
         <Button title="Sesión libre" variant="secondary" onPress={() => void startFree()} loading={busy} />
       </View>
 
-      <Card>
+      <Card tone="blue">
         <Text variant="heading">Volumen de esta semana</Text>
         <Text variant="caption" muted>
           Series y kg totales por grupo muscular (desde el lunes).

@@ -16,18 +16,27 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { fontFamily, radius, spacing, useTheme } from '../theme';
+import { fontFamily, isB, radius, spacing, useTheme } from '../theme';
 
 type Variant = 'display' | 'title' | 'heading' | 'body' | 'caption' | 'label';
 
 // Escala tipográfica: números grandes y ligeros para lo importante, títulos recogidos y un cuerpo cómodo de leer.
-const textStyles: Record<Variant, { fontSize: number; fontWeight: '300' | '400' | '500' | '600'; lineHeight: number; letterSpacing: number }> = {
+const textStyles: Record<Variant, { fontSize: number; fontWeight: '300' | '400' | '500' | '600' | '700' | '800'; lineHeight: number; letterSpacing: number }> = {
   display: { fontSize: 64, fontWeight: '300', lineHeight: 68, letterSpacing: -2 },
   title: { fontSize: 30, fontWeight: '600', lineHeight: 36, letterSpacing: -0.7 },
   heading: { fontSize: 19, fontWeight: '600', lineHeight: 26, letterSpacing: -0.2 },
   body: { fontSize: 16, fontWeight: '400', lineHeight: 24, letterSpacing: 0 },
   caption: { fontSize: 13, fontWeight: '400', lineHeight: 18, letterSpacing: 0.1 },
   label: { fontSize: 14, fontWeight: '500', lineHeight: 20, letterSpacing: 0.05 },
+};
+
+const textStylesB: typeof textStyles = {
+  display: { fontSize: 56, fontWeight: '800', lineHeight: 60, letterSpacing: -1.5 },
+  title: { fontSize: 28, fontWeight: '800', lineHeight: 34, letterSpacing: -0.5 },
+  heading: { fontSize: 18, fontWeight: '700', lineHeight: 24, letterSpacing: -0.2 },
+  body: { fontSize: 16, fontWeight: '500', lineHeight: 23, letterSpacing: 0 },
+  caption: { fontSize: 13, fontWeight: '500', lineHeight: 18, letterSpacing: 0 },
+  label: { fontSize: 14, fontWeight: '600', lineHeight: 20, letterSpacing: 0 },
 };
 
 export function Text({
@@ -39,7 +48,7 @@ export function Text({
   const { colors } = useTheme();
   // El grosor (también el que se pasa en `style`) decide el archivo de la fuente; se quita `fontWeight` para no engrosarlo dos veces.
   const { fontWeight, ...custom } = (StyleSheet.flatten(style as StyleProp<TextStyle>) ?? {}) as TextStyle;
-  const base = textStyles[variant];
+  const base = (isB ? textStylesB : textStyles)[variant];
   return (
     <RNText
       {...rest}
@@ -93,9 +102,13 @@ export function Screen({
   );
 }
 
-/** Sección plana: sin caja ni sombra, solo una línea fina que la separa de la anterior. */
-export function Card({ children, style }: { children: ReactNode; style?: ViewStyle }) {
+/** Sección plana (A) o baldosa redondeada (B). `tone` pinta la baldosa con el pastel de su zona (solo B). */
+export function Card({ children, style, tone }: { children: ReactNode; style?: ViewStyle; tone?: 'blue' | 'mint' | 'amber' }) {
   const { colors } = useTheme();
+  if (isB) {
+    const bg = tone === 'blue' ? colors.tintBlue : tone === 'mint' ? colors.tintMint : tone === 'amber' ? colors.tintAmber : colors.surface;
+    return <View style={[{ backgroundColor: bg, borderRadius: radius.lg, padding: spacing.lg, gap: spacing.sm }, style]}>{children}</View>;
+  }
   return (
     <View
       style={[
@@ -126,13 +139,14 @@ export function LinkRow({ title, hint, onPress }: { title: string; hint?: string
         flexDirection: 'row',
         alignItems: 'center',
         gap: spacing.md,
-        borderTopWidth: StyleSheet.hairlineWidth,
-        borderTopColor: colors.border,
+        ...(isB
+          ? { backgroundColor: colors.surface, borderRadius: radius.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, marginBottom: spacing.sm }
+          : { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border }),
         opacity: pressed ? 0.6 : 1,
       })}
     >
       <View style={{ flex: 1, minWidth: 0 }}>
-        <Text variant="body" style={{ fontWeight: '500' }}>
+        <Text variant="body" style={{ fontWeight: isB ? '700' : '500' }}>
           {title}
         </Text>
         {hint ? (
@@ -163,8 +177,8 @@ export function Button({
 }) {
   const { colors } = useTheme();
   // Principal: tinta rellena. Secundario: solo contorno. Peligro: contorno rojo. Ghost: texto apagado.
-  const bg = { primary: colors.ink, secondary: 'transparent', danger: 'transparent', ghost: 'transparent' }[variant];
-  const fg = { primary: colors.onInk, secondary: colors.text, danger: colors.danger, ghost: colors.textMuted }[variant];
+  const bg = { primary: colors.ink, secondary: isB ? colors.tintBlue : 'transparent', danger: 'transparent', ghost: 'transparent' }[variant];
+  const fg = { primary: colors.onInk, secondary: isB ? colors.primary : colors.text, danger: colors.danger, ghost: colors.textMuted }[variant];
   const line = { primary: 'transparent', secondary: colors.border, danger: colors.danger, ghost: 'transparent' }[variant];
   const inactive = disabled || loading;
   return (
@@ -175,8 +189,8 @@ export function Button({
       disabled={inactive}
       style={({ pressed }) => ({
         backgroundColor: bg,
-        borderRadius: 999,
-        borderWidth: variant === 'primary' || variant === 'ghost' ? 0 : 1,
+        borderRadius: isB ? radius.md : 999,
+        borderWidth: variant === 'primary' || variant === 'ghost' || (isB && variant === 'secondary') ? 0 : 1,
         borderColor: line,
         minHeight: 52,
         paddingHorizontal: spacing.xl,
@@ -185,7 +199,7 @@ export function Button({
         opacity: inactive ? 0.4 : pressed ? 0.75 : 1,
       })}
     >
-      {loading ? <ActivityIndicator color={fg} /> : <Text variant="label" style={{ color: fg, fontSize: 16, fontWeight: '500' }}>{title}</Text>}
+      {loading ? <ActivityIndicator color={fg} /> : <Text variant="label" style={{ color: fg, fontSize: 16, fontWeight: isB ? '700' : '500' }}>{title}</Text>}
     </Pressable>
   );
 }
@@ -223,7 +237,7 @@ export function TextField({
             minWidth: 0,
             minHeight: 52,
             borderRadius: radius.md,
-            borderWidth: focused ? 1.5 : 1,
+            borderWidth: focused || error ? 1.5 : isB ? 0 : 1,
             borderColor: error ? colors.danger : focused ? colors.ink : colors.border,
             backgroundColor: colors.surface,
             color: colors.text,
@@ -277,7 +291,7 @@ export function OptionList<T extends string>({
               borderRadius: radius.md,
               borderWidth: selected ? 1.5 : 1,
               borderColor: selected ? colors.ink : colors.border,
-              backgroundColor: 'transparent',
+              backgroundColor: isB ? colors.surface : 'transparent',
               padding: spacing.lg,
             }}
           >
@@ -328,8 +342,8 @@ export function SegmentRow<T extends string | number>({
                 alignItems: 'center',
                 justifyContent: 'center',
                 borderRadius: radius.md,
-                backgroundColor: selected ? colors.ink : 'transparent',
-                borderWidth: 1,
+                backgroundColor: selected ? colors.ink : isB ? colors.surface : 'transparent',
+                borderWidth: isB ? 0 : 1,
                 borderColor: selected ? colors.ink : colors.border,
               }}
             >
@@ -376,8 +390,8 @@ export function ChipMulti({
                 minHeight: 40,
                 justifyContent: 'center',
                 borderRadius: 999,
-                backgroundColor: on ? colors.ink : 'transparent',
-                borderWidth: 1,
+                backgroundColor: on ? colors.ink : isB ? colors.surface : 'transparent',
+                borderWidth: isB ? 0 : 1,
                 borderColor: on ? colors.ink : colors.border,
               }}
             >
@@ -450,8 +464,8 @@ export function ChipSingle<T extends string>({
               minHeight: 36,
               justifyContent: 'center',
               borderRadius: 999,
-              backgroundColor: on ? colors.ink : 'transparent',
-              borderWidth: 1,
+              backgroundColor: on ? colors.ink : isB ? colors.surface : 'transparent',
+              borderWidth: isB ? 0 : 1,
               borderColor: on ? colors.ink : colors.border,
             }}
           >

@@ -105,7 +105,7 @@ export default function Dieta() {
       {date !== today ? <LinkButton title="Volver a hoy" onPress={() => setDate(today)} /> : null}
       <ErrorText>{error ?? actionError}</ErrorText>
 
-      <Card>
+      <Card tone="mint">
         <Text variant="caption" muted>
           Calorías
         </Text>
@@ -129,7 +129,7 @@ export default function Dieta() {
         <MacroBar label="Grasa" consumed={total.fat_g} target={profile?.target_fat_g ?? null} color={colors.fat} />
       </Card>
 
-      <Card>
+      <Card tone="mint">
         <MacroBar label="Agua" consumed={water} target={waterGoal} color={colors.protein} unit="ml" />
         <Text variant="caption" muted>
           {formatMl(water)} de {formatMl(waterGoal)}
@@ -147,7 +147,7 @@ export default function Dieta() {
         const entries = logs.filter((l) => l.meal === meal);
         const sub = sumMacros(entries);
         return (
-          <Card key={meal}>
+          <Card key={meal} tone="mint">
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
               <Text variant="heading">{MEAL_LABELS[meal]}</Text>
               <Text variant="caption" muted>
