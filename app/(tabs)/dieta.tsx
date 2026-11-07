@@ -4,13 +4,14 @@ import { useRouter } from 'expo-router';
 import { CopyMealModal, SaveFavoriteModal } from '../../src/components/meal-modals';
 import { QuantitySheet } from '../../src/components/quantity-sheet';
 import { Button, Card, ErrorText, LinkButton, LinkRow, Screen, Text } from '../../src/components/ui';
-import { addWater, deleteLog, getLogs, getWaterMl, undoWater, updateLog, type LogEntry } from '../../src/lib/diet';
+import { addLogs, addWater, deleteLog, getLogs, getWaterMl, listPlan, undoWater, updateLog, type EntryDraft, type LogEntry, type PlanEntry } from '../../src/lib/diet';
 import {
   MEALS,
   MEAL_LABELS,
   addDays,
   dayLabel,
   formatMl,
+  isoWeekday,
   progress,
   rescaleEntry,
   sumMacros,
@@ -18,6 +19,7 @@ import {
   type Meal,
 } from '../../src/lib/diet-math';
 import { tap } from '../../src/lib/haptics';
+import { WEEKDAY_LONG } from '../../src/lib/labels';
 import { formatKg } from '../../src/lib/training-math';
 import { useFocusData } from '../../src/lib/use-focus-data';
 import { useAuth } from '../../src/providers/AuthProvider';
@@ -58,8 +60,8 @@ export default function Dieta() {
   const [date, setDate] = useState(today);
   const { data, error, loading, reload } = useFocusData(
     async () => {
-      const [logs, water] = await Promise.all([getLogs(date), getWaterMl(date)]);
-      return { logs, water };
+      const [logs, water, plan] = await Promise.all([getLogs(date), getWaterMl(date), listPlan().catch(() => [] as PlanEntry[])]);
+      return { logs, water, plan };
     },
     [date],
   );
@@ -69,6 +71,29 @@ export default function Dieta() {
   const [favFor, setFavFor] = useState<Meal | null>(null);
 
   const logs = data?.logs ?? [];
+  // Lo planificado para el día de la semana de la fecha que se está viendo
+  const weekday = isoWeekday(date);
+  const planned = (data?.plan ?? []).filter((p) => p.weekday === weekday);
+  const draftOf = (p: PlanEntry): EntryDraft => ({
+    meal: p.meal,
+    food_id: p.food_id,
+    recipe_id: p.recipe_id,
+    name: p.name,
+    quantity_g: p.quantity_g,
+    servings: p.servings,
+    kcal: p.kcal,
+    protein_g: p.protein_g,
+    carbs_g: p.carbs_g,
+    fat_g: p.fat_g,
+  });
+  // Una comida planificada ya está en el diario si hay una entrada igual en esa comida
+  const inDiary = (p: PlanEntry) => logs.some((l) => l.meal === p.meal && l.name === p.name);
+  const addPlanned = (items: PlanEntry[]) =>
+    run(async () => {
+      if (!session) return;
+      await addLogs(session.user.id, date, items.filter((p) => !inDiary(p)).map(draftOf));
+      tap();
+    }, 'No se pudo añadir al diario. Comprueba tu conexión.');
   const total = sumMacros(logs);
   const kcalTarget = profile?.target_kcal ?? null;
   const waterGoal = profile?.water_goal_ml ?? 2500;
@@ -132,6 +157,45 @@ export default function Dieta() {
         <MacroBar label="Carbohidratos" consumed={total.carbs_g} target={profile?.target_carbs_g ?? null} color={colors.carbs} />
         <MacroBar label="Grasa" consumed={total.fat_g} target={profile?.target_fat_g ?? null} color={colors.fat} />
       </Card>
+
+      {planned.length ? (
+        <Card tone="blue">
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
+            <Text variant="heading">Plan de {WEEKDAY_LONG[weekday]}</Text>
+            <Text variant="caption" muted>
+              {Math.round(sumMacros(planned).kcal)} kcal
+            </Text>
+          </View>
+          {MEALS.map((meal) => {
+            const items = planned.filter((p) => p.meal === meal);
+            if (!items.length) return null;
+            const done = items.every(inDiary);
+            return (
+              <View key={meal} style={{ gap: 2, paddingVertical: spacing.xs }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: spacing.md }}>
+                  <Text variant="label">{MEAL_LABELS[meal]}</Text>
+                  <Text variant="caption" muted>
+                    {Math.round(sumMacros(items).kcal)} kcal
+                  </Text>
+                </View>
+                {items.map((p) => (
+                  <Text key={p.id} variant="caption" muted>
+                    {p.name}
+                  </Text>
+                ))}
+                {done ? (
+                  <Text variant="caption" style={{ color: colors.primary }}>
+                    ✓ En tu diario
+                  </Text>
+                ) : (
+                  <LinkButton title="Añadir al diario" onPress={() => void addPlanned(items)} />
+                )}
+              </View>
+            );
+          })}
+          {planned.some((p) => !inDiary(p)) ? <Button title="Añadir todo el día al diario" onPress={() => void addPlanned(planned)} /> : null}
+        </Card>
+      ) : null}
 
       <Card tone="mint">
         <MacroBar label="Agua" consumed={water} target={waterGoal} color={colors.protein} unit="ml" />
