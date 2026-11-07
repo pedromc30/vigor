@@ -38,7 +38,7 @@ export default function Shopping() {
 
   const share = async () => {
     if (!data) return;
-    const text = ['Lista de la compra (Vigor)', ...data.list.map((i) => `- ${i.name}: ${formatGrams(i.grams)}`)].join('\n');
+    const text = ['Lista de la compra (Vigor)', ...data.list.map((i) => `- ${i.name}: ${[i.grams > 0 ? formatGrams(i.grams) : null, i.units ? `${i.units} ud.` : null].filter(Boolean).join(' · ')}`)].join('\n');
     try {
       await Share.share({ message: text });
     } catch {
@@ -49,7 +49,7 @@ export default function Shopping() {
   return (
     <Screen>
       <Text variant="title">Lista de la compra</Text>
-      <Text muted>Suma de todo lo que has planificado para la semana. Las recetas se descomponen en ingredientes.</Text>
+      <Text muted>Suma de todo lo que has planificado para la semana. Las recetas se descomponen en ingredientes. En las dietas importadas de un archivo, los ingredientes se sacan del texto de cada comida: es una estimación.</Text>
       <ErrorText>{error}</ErrorText>
       {loading ? <Text muted>Cargando…</Text> : null}
       {data && !data.planned ? <Text muted>Aún no has planificado ninguna comida. Añade alimentos o recetas en el planificador.</Text> : null}
@@ -73,7 +73,7 @@ export default function Shopping() {
                 <View style={{ flex: 1 }}>
                   <Text style={{ textDecorationLine: on ? 'line-through' : 'none', opacity: on ? 0.5 : 1 }}>{i.name}</Text>
                 </View>
-                <Text muted>{formatGrams(i.grams)}</Text>
+                <Text muted>{[i.grams > 0 ? formatGrams(i.grams) : null, i.units ? `${i.units} ud.` : null].filter(Boolean).join(' · ')}</Text>
               </Pressable>
             );
           })}

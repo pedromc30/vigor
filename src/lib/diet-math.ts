@@ -1,4 +1,5 @@
 // Lógica pura de dieta: macros por cantidad, recetas, totales, fechas, alérgenos y lista de la compra.
+import { ingredientsFromText } from './shopping-text';
 
 export const MEALS = ['desayuno', 'comida', 'merienda', 'cena', 'snacks'] as const;
 export type Meal = (typeof MEALS)[number];
@@ -184,6 +185,8 @@ export interface ShoppingItem {
   key: string;
   name: string;
   grams: number;
+  /** Unidades (plátanos, huevos…) de los ingredientes sacados del texto de una dieta importada. */
+  units?: number;
 }
 
 /**
@@ -192,10 +195,12 @@ export interface ShoppingItem {
  */
 export function buildShoppingList(lines: PlanLine[], recipes: Record<string, ShoppingRecipe>): ShoppingItem[] {
   const map = new Map<string, ShoppingItem>();
-  const add = (key: string, name: string, grams: number) => {
+  const add = (key: string, name: string, grams: number, units = 0) => {
     const cur = map.get(key);
-    if (cur) cur.grams += grams;
-    else map.set(key, { key, name, grams });
+    if (cur) {
+      cur.grams += grams;
+      if (units) cur.units = (cur.units ?? 0) + units;
+    } else map.set(key, { key, name, grams, ...(units ? { units } : null) });
   };
 
   for (const l of lines) {
@@ -206,10 +211,21 @@ export function buildShoppingList(lines: PlanLine[], recipes: Record<string, Sho
     } else if (l.food_id && l.quantity_g) {
       add(`food:${l.food_id}`, l.name, l.quantity_g);
     }
-    // Entradas sin alimento ni receta (borrados) no se pueden comprar.
+    else if (!l.food_id && !l.recipe_id && l.name.trim()) {
+      // Entrada sin alimento ni receta (dieta importada de un archivo, o alimento borrado): se saca lo comprable del texto.
+      const factor = l.quantity_g ? 1 : (l.servings ?? 1);
+      const textKey = (n: string) => `txt:${n.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/s$/, '')}`; // «huevo» y «huevos» son lo mismo
+      if (l.quantity_g) add(textKey(l.name), l.name, l.quantity_g);
+      else {
+        const found = ingredientsFromText(l.name);
+        for (const i of found) add(textKey(i.name), i.name, (i.grams ?? 0) * factor, (i.units ?? 0) * factor);
+        if (!found.length && l.name.length <= 60) add(textKey(l.name), l.name, 0, factor);
+      }
+    }
   }
   return [...map.values()]
     .map((i) => ({ ...i, grams: Math.round(i.grams) }))
+    .filter((i) => i.grams > 0 || (i.units ?? 0) > 0)
     .sort((a, b) => a.name.localeCompare(b.name, 'es'));
 }
 

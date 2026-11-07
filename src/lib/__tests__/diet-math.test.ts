@@ -126,8 +126,29 @@ describe('buildShoppingList', () => {
       { key: 'food:pollo', name: 'Pollo', grams: 450 }, // 150 + 300
     ]);
   });
-  it('omite entradas cuyo alimento o receta ya no existe', () => {
-    expect(buildShoppingList([{ food_id: null, recipe_id: null, name: 'x', quantity_g: 100, servings: null }], {})).toEqual([]);
+  it('una entrada sin alimento ni receta se compra con su nombre y cantidad (dietas importadas, alimentos borrados)', () => {
+    expect(buildShoppingList([{ food_id: null, recipe_id: null, name: 'x', quantity_g: 100, servings: null }], {})).toEqual([{ key: 'txt:x', name: 'x', grams: 100 }]);
+  });
+  it('de una comida importada en una sola entrada saca los ingredientes del texto, con gramos y unidades', () => {
+    const l = (name: string, servings = 1) => ({ food_id: null, recipe_id: null, name, quantity_g: null, servings });
+    const list = buildShoppingList(
+      [
+        l('Gachas: 70 g de avena cocida en 250 ml de leche semidesnatada + 30 g de proteína whey + 1 plátano + 1 cucharada y media de aceite'),
+        l('100 g de arroz + 220 g de pechuga de pollo (cocida) + 250 g de verdura + 1 cucharadita de aceite · 1 kiwi'),
+        l('Tortilla de 2 huevos y 200 g de claras + 1 huevo cocido'),
+        l('Tostadas con tomate'),
+      ],
+      {},
+    );
+    const by = Object.fromEntries(list.map((i) => [i.name, i]));
+    expect(by['avena']).toMatchObject({ grams: 70 });
+    expect(by['leche semidesnatada']).toMatchObject({ grams: 250 });
+    expect(by['aceite']).toMatchObject({ grams: 20 }); // 15 g + 5 g
+    expect(by['plátano']).toMatchObject({ grams: 0, units: 1 });
+    expect(by['pechuga de pollo']).toMatchObject({ grams: 220 });
+    expect(by['huevos']).toMatchObject({ units: 3 }); // «huevo» y «huevos» se suman
+    expect(by['claras']).toMatchObject({ grams: 200 });
+    expect(by['Tostadas con tomate']).toMatchObject({ units: 1 }); // sin cantidades: una unidad con su nombre
   });
 });
 
