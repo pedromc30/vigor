@@ -13,6 +13,7 @@ export interface Profile {
   age: number | null;
   height_cm: number | null;
   weight_kg: number | null;
+  body_fat_pct: number | null;
   activity_level: ActivityLevel | null;
   goal: Goal | null;
   training_days_per_week: number | null;

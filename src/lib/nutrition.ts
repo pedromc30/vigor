@@ -40,7 +40,16 @@ export interface BodyData {
   age: number;
   heightCm: number;
   weightKg: number;
+  /** % de grasa corporal (3-60). Si se indica, la TMB se calcula con Katch-McArdle; si no, con Mifflin-St Jeor. */
+  bodyFatPct?: number | null;
 }
+
+export type BmrFormula = 'katch-mcardle' | 'mifflin';
+
+export const FORMULA_LABELS: Record<BmrFormula, string> = { 'katch-mcardle': 'Katch-McArdle', mifflin: 'Mifflin-St Jeor' };
+
+export const BODY_FAT_MIN = 3;
+export const BODY_FAT_MAX = 60;
 
 export interface PlanInput extends BodyData {
   activityLevel: ActivityLevel;
@@ -56,14 +65,28 @@ export interface Macros {
 export type PlanWarning = 'kcal_floor_applied' | 'macros_exceed_kcal';
 
 export interface NutritionPlan extends Macros {
+  formula: BmrFormula;
   bmr: number;
   tdee: number;
   kcal: number;
   warnings: PlanWarning[];
 }
 
-/** Tasa metabólica basal, Mifflin-St Jeor (kcal/día). */
-export function bmr({ sex, age, heightCm, weightKg }: BodyData): number {
+/** Fórmula que se usa con estos datos: Katch-McArdle si hay un % de grasa válido; si no, Mifflin-St Jeor. */
+export function bmrFormula({ bodyFatPct }: Pick<BodyData, 'bodyFatPct'>): BmrFormula {
+  return bodyFatPct != null && bodyFatPct >= BODY_FAT_MIN && bodyFatPct <= BODY_FAT_MAX ? 'katch-mcardle' : 'mifflin';
+}
+
+/**
+ * Tasa metabólica basal (kcal/día). Katch-McArdle (370 + 21,6 × masa magra en kg) cuando se conoce el % de grasa;
+ * si no, Mifflin-St Jeor (que usa sexo, edad, altura y peso).
+ */
+export function bmr(body: BodyData): number {
+  if (bmrFormula(body) === 'katch-mcardle') {
+    const leanKg = body.weightKg * (1 - body.bodyFatPct! / 100);
+    return 370 + 21.6 * leanKg;
+  }
+  const { sex, age, heightCm, weightKg } = body;
   const base = 10 * weightKg + 6.25 * heightCm - 5 * age;
   return sex === 'male' ? base + 5 : base - 161;
 }
@@ -120,5 +143,5 @@ export function computePlan(input: PlanInput): NutritionPlan {
   const { kcal, floorApplied } = targetKcal(total, input.goal, input.sex);
   const { warnings, ...macros } = defaultMacros(kcal, input.weightKg, input.goal);
   if (floorApplied) warnings.push('kcal_floor_applied');
-  return { bmr: Math.round(basal), tdee: Math.round(total), kcal, warnings, ...macros };
+  return { formula: bmrFormula(input), bmr: Math.round(basal), tdee: Math.round(total), kcal, warnings, ...macros };
 }

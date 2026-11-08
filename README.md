@@ -24,7 +24,7 @@ App móvil (Expo + React Native + TypeScript, backend Supabase) que combina entr
 
 ## Cálculo (Fase 1)
 
-- TMB: Mifflin-St Jeor. Gasto total = TMB × factor (1,2 / 1,375 / 1,55 / 1,725 / 1,9).
+- TMB: **Katch-McArdle** (370 + 21,6 × masa magra en kg) si el perfil tiene el **% de grasa corporal** (opcional, 3-60; migración `0010_body_fat.sql`); si no, **Mifflin-St Jeor**. Es una estimación y depende de lo fiable que sea el % de grasa. Gasto total = TMB × factor (1,2 / 1,375 / 1,55 / 1,725 / 1,9).
 - Objetivo: −17,5 % (perder grasa), 0 % (mantener), +7,5 % (ganar músculo). Suelo: 1.200 kcal (mujer) / 1.500 kcal (hombre).
 - Macros: proteína 2,2 / 1,8 / 1,8 g/kg según objetivo; grasa = máx(0,8 g/kg, 25 % kcal); carbohidratos = resto.
 - Todo editable en Perfil → Editar objetivos.

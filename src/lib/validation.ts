@@ -3,6 +3,7 @@ export const LIMITS = {
   heightCm: { min: 120, max: 230 },
   weightKg: { min: 30, max: 300 },
   kcal: { min: 500, max: 10000 },
+  bodyFatPct: { min: 3, max: 60 },
 } as const;
 
 /** Acepta coma o punto decimal ("70,5"). Devuelve null si no es un número válido. */

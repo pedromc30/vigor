@@ -6,6 +6,7 @@ import { runDeleteAccount } from '../../src/lib/account';
 import { confirmSignOut } from '../../src/lib/offline/session';
 import { ACTIVITY_LABELS, DIET_LABELS, GOAL_LABELS, SEX_LABELS, ALLERGEN_OPTIONS } from '../../src/lib/labels';
 import { MacroRow } from '../../src/components/plan-summary';
+import { FORMULA_LABELS, bmrFormula } from '../../src/lib/nutrition';
 import { Button, Card, Disclaimer, ErrorText, LinkRow, Screen, Text } from '../../src/components/ui';
 
 function Row({ label, value }: { label: string; value: string }) {
@@ -46,6 +47,7 @@ export default function Perfil() {
         <Row label="Edad" value={profile.age != null ? `${profile.age} años` : '—'} />
         <Row label="Altura" value={profile.height_cm != null ? `${profile.height_cm} cm` : '—'} />
         <Row label="Peso" value={profile.weight_kg != null ? `${profile.weight_kg} kg` : '—'} />
+        <Row label="Grasa corporal" value={profile.body_fat_pct != null ? `${String(profile.body_fat_pct).replace('.', ',')} %` : '—'} />
         <Row label="Actividad" value={profile.activity_level ? ACTIVITY_LABELS[profile.activity_level].title : '—'} />
         <Row label="Objetivo" value={profile.goal ? GOAL_LABELS[profile.goal].title : '—'} />
         <Row label="Días de entreno" value={profile.training_days_per_week != null ? `${profile.training_days_per_week} / semana` : '—'} />
@@ -63,7 +65,7 @@ export default function Perfil() {
           carbsG={profile.target_carbs_g ?? 0}
         />
         <Text variant="caption" muted>
-          {profile.targets_manual ? 'Editados manualmente.' : 'Calculados automáticamente (Mifflin-St Jeor).'}
+          {profile.targets_manual ? 'Editados manualmente.' : `Calculados automáticamente (${FORMULA_LABELS[bmrFormula({ bodyFatPct: profile.body_fat_pct })]}).`}
         </Text>
         <Button title="Editar objetivos" variant="secondary" onPress={() => router.push('/edit-targets')} />
       </Card>

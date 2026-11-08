@@ -1,5 +1,5 @@
 import { View } from 'react-native';
-import type { NutritionPlan } from '../lib/nutrition';
+import { FORMULA_LABELS, type NutritionPlan } from '../lib/nutrition';
 import { Card, Text } from './ui';
 import { spacing, useTheme } from '../theme';
 
@@ -39,7 +39,7 @@ export function PlanSummary({ plan }: { plan: NutritionPlan }) {
       <Text variant="title">{plan.kcal} kcal</Text>
       <MacroRow {...plan} />
       <Text variant="caption" muted>
-        TMB {plan.bmr} kcal · Gasto total estimado {plan.tdee} kcal (Mifflin-St Jeor)
+        TMB {plan.bmr} kcal · Gasto total estimado {plan.tdee} kcal ({FORMULA_LABELS[plan.formula]})
       </Text>
       {plan.warnings.includes('kcal_floor_applied') ? (
         <Text variant="caption">

@@ -14,8 +14,8 @@ export function profileTable(p: Record<string, unknown>): Table {
   const list = (v: unknown) => (Array.isArray(v) ? v.join('; ') : '');
   return {
     filename: 'perfil',
-    headers: ['sexo', 'edad', 'altura_cm', 'peso_kg', 'nivel_actividad', 'objetivo', 'dias_entreno_semana', 'dieta', 'alergias', 'objetivo_kcal', 'objetivo_proteina_g', 'objetivo_grasa_g', 'objetivo_carbohidratos_g', 'objetivo_agua_ml', 'objetivos_editados_a_mano', 'consentimiento_fecha', 'consentimiento_version'],
-    rows: [[p.sex, p.age, p.height_cm, p.weight_kg, p.activity_level, p.goal, p.training_days_per_week, p.diet_preference, list(p.allergies), p.target_kcal, p.target_protein_g, p.target_fat_g, p.target_carbs_g, p.water_goal_ml, p.targets_manual, p.health_consent_at, p.consent_version] as Cell[]],
+    headers: ['sexo', 'edad', 'altura_cm', 'peso_kg', 'grasa_corporal_pct', 'nivel_actividad', 'objetivo', 'dias_entreno_semana', 'dieta', 'alergias', 'objetivo_kcal', 'objetivo_proteina_g', 'objetivo_grasa_g', 'objetivo_carbohidratos_g', 'objetivo_agua_ml', 'objetivos_editados_a_mano', 'consentimiento_fecha', 'consentimiento_version'],
+    rows: [[p.sex, p.age, p.height_cm, p.weight_kg, p.body_fat_pct, p.activity_level, p.goal, p.training_days_per_week, p.diet_preference, list(p.allergies), p.target_kcal, p.target_protein_g, p.target_fat_g, p.target_carbs_g, p.water_goal_ml, p.targets_manual, p.health_consent_at, p.consent_version] as Cell[]],
   };
 }
 

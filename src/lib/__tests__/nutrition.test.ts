@@ -1,5 +1,6 @@
 import {
   bmr,
+  bmrFormula,
   computePlan,
   defaultMacros,
   macrosKcal,
@@ -26,6 +27,29 @@ describe('bmr (Mifflin-St Jeor)', () => {
   it('mujer 25 a, 165 cm, 60 kg', () => {
     // 10*60 + 6.25*165 - 5*25 - 161 = 1345.25
     expect(bmr({ sex: 'female', age: 25, heightCm: 165, weightKg: 60 })).toBeCloseTo(1345.25, 5);
+  });
+});
+
+describe('bmr (Katch-McArdle)', () => {
+  it('con % de grasa usa la masa magra: 370 + 21,6 × kg magros', () => {
+    // 80 kg al 15 % → 68 kg de masa magra → 370 + 21,6 × 68 = 1838,8 (no depende de sexo, edad ni altura)
+    expect(bmr({ ...male, bodyFatPct: 15 })).toBeCloseTo(1838.8, 5);
+    expect(bmr({ ...male, sex: 'female', age: 55, heightCm: 150, bodyFatPct: 15 })).toBeCloseTo(1838.8, 5);
+  });
+  it('sin % de grasa, o fuera de 3-60, sigue con Mifflin-St Jeor', () => {
+    for (const bodyFatPct of [undefined, null, 2, 61, Number.NaN]) {
+      expect(bmr({ ...male, bodyFatPct })).toBeCloseTo(1780, 5);
+      expect(bmrFormula({ bodyFatPct })).toBe('mifflin');
+    }
+    expect(bmrFormula({ bodyFatPct: 3 })).toBe('katch-mcardle');
+    expect(bmrFormula({ bodyFatPct: 60 })).toBe('katch-mcardle');
+  });
+  it('computePlan indica la fórmula usada y el gasto total sale de ella', () => {
+    const k = computePlan({ ...male, bodyFatPct: 15 });
+    expect(k.formula).toBe('katch-mcardle');
+    expect(k.bmr).toBe(1839);
+    expect(k.tdee).toBe(Math.round(1838.8 * 1.55));
+    expect(computePlan(male).formula).toBe('mifflin');
   });
 });
 

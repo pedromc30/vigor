@@ -4,7 +4,7 @@ import { computePlan, type ActivityLevel, type Goal, type NutritionPlan, type Pl
 import type { DietPreference, Profile } from '../lib/profile';
 import { ACTIVITY_LABELS, ALLERGEN_OPTIONS, DIET_LABELS, GOAL_LABELS, SEX_LABELS, TRAINING_DAYS } from '../lib/labels';
 import { LIMITS, parseDecimal, rangeError } from '../lib/validation';
-import { ChipMulti, ErrorText, OptionList, SegmentRow, TextField } from './ui';
+import { ChipMulti, ErrorText, OptionList, SegmentRow, Text, TextField } from './ui';
 import { spacing } from '../theme';
 
 const PRESET_KEYS = new Set(ALLERGEN_OPTIONS.map((a) => a.key));
@@ -14,6 +14,7 @@ export interface ProfileDraft {
   age: string;
   height: string;
   weight: string;
+  bodyFat: string;
   activity: ActivityLevel | null;
   goal: Goal | null;
   trainingDays: number | null;
@@ -29,6 +30,7 @@ export function draftFromProfile(p: Profile | null): ProfileDraft {
     age: p?.age != null ? String(p.age) : '',
     height: p?.height_cm != null ? String(p.height_cm).replace('.', ',') : '',
     weight: p?.weight_kg != null ? String(p.weight_kg).replace('.', ',') : '',
+    bodyFat: p?.body_fat_pct != null ? String(p.body_fat_pct).replace('.', ',') : '',
     activity: p?.activity_level ?? null,
     goal: p?.goal ?? null,
     trainingDays: p?.training_days_per_week ?? null,
@@ -38,7 +40,7 @@ export function draftFromProfile(p: Profile | null): ProfileDraft {
   };
 }
 
-export type DraftErrors = Partial<Record<'sex' | 'age' | 'height' | 'weight' | 'activity' | 'goal' | 'trainingDays', string>>;
+export type DraftErrors = Partial<Record<'sex' | 'age' | 'height' | 'weight' | 'bodyFat' | 'activity' | 'goal' | 'trainingDays', string>>;
 
 export function validateBody(d: ProfileDraft): DraftErrors {
   const e: DraftErrors = {};
@@ -47,6 +49,8 @@ export function validateBody(d: ProfileDraft): DraftErrors {
   e.age = rangeError(age !== null && Number.isInteger(age) ? age : null, LIMITS.age.min, LIMITS.age.max, 'años') ?? undefined;
   e.height = rangeError(parseDecimal(d.height), LIMITS.heightCm.min, LIMITS.heightCm.max, 'cm') ?? undefined;
   e.weight = rangeError(parseDecimal(d.weight), LIMITS.weightKg.min, LIMITS.weightKg.max, 'kg') ?? undefined;
+  // El % de grasa es opcional: vacío vale; si se escribe, tiene que ser un número razonable.
+  if (d.bodyFat.trim() !== '') e.bodyFat = rangeError(parseDecimal(d.bodyFat), LIMITS.bodyFatPct.min, LIMITS.bodyFatPct.max, '%') ?? undefined;
   return Object.fromEntries(Object.entries(e).filter(([, v]) => v)) as DraftErrors;
 }
 
@@ -65,6 +69,7 @@ export function planFromDraft(d: ProfileDraft): NutritionPlan | null {
     age: parseDecimal(d.age)!,
     heightCm: parseDecimal(d.height)!,
     weightKg: parseDecimal(d.weight)!,
+    bodyFatPct: parseDecimal(d.bodyFat),
     activityLevel: d.activity!,
     goal: d.goal!,
   };
@@ -82,6 +87,7 @@ export function profileValuesFromDraft(d: ProfileDraft) {
     age: parseDecimal(d.age),
     height_cm: parseDecimal(d.height),
     weight_kg: parseDecimal(d.weight),
+    body_fat_pct: parseDecimal(d.bodyFat),
     activity_level: d.activity,
     goal: d.goal,
     training_days_per_week: d.trainingDays,
@@ -120,6 +126,10 @@ export function BodySection({ draft, set, errors }: SectionProps) {
       <TextField label="Edad" suffix="años" keyboardType="number-pad" value={draft.age} onChangeText={(t) => set('age', t)} error={errors.age} />
       <TextField label="Altura" suffix="cm" keyboardType="decimal-pad" value={draft.height} onChangeText={(t) => set('height', t)} error={errors.height} />
       <TextField label="Peso" suffix="kg" keyboardType="decimal-pad" value={draft.weight} onChangeText={(t) => set('weight', t)} error={errors.weight} />
+      <TextField label="% de grasa corporal (opcional)" suffix="%" keyboardType="decimal-pad" value={draft.bodyFat} onChangeText={(t) => set('bodyFat', t)} error={errors.bodyFat} />
+      <Text variant="caption" muted>
+        Si lo indicas, el gasto basal se calcula con Katch-McArdle (a partir de tu masa magra); si lo dejas vacío, con Mifflin-St Jeor. Una estimación con báscula de bioimpedancia o con un pliegue puede tener bastante error.
+      </Text>
     </View>
   );
 }
