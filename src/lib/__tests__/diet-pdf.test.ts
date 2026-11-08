@@ -130,3 +130,27 @@ describe('parseMacros', () => {
     expect(parseMacros('Proteína · Hidratos ·')).toBeNull();
   });
 });
+
+describe('parseDietPdf: el objetivo del día es la suma exacta de sus comidas', () => {
+  const t = (x: number, y: number, text: string): PdfItem => ({ x, y, text });
+  const header = [t(54, 740, 'Comida'), t(142, 740, 'Qué comer'), t(387, 740, 'kcal'), t(424, 740, 'Proteína · Hidratos ·'), t(424, 728, 'Grasa')];
+  const day = (name: string, total: string, meals: [string, string, string, string][]): PdfItem[] => [
+    t(46, 790, name),
+    t(46, 770, total),
+    ...header,
+    ...meals.flatMap(([meal, food, kcal, macros], i) => [t(54, 700 - i * 40, meal), t(142, 700 - i * 40, food), t(387, 700 - i * 40, kcal), t(424, 700 - i * 40, macros)]),
+  ];
+  it('con todas las comidas con calorías: suma de las comidas (no el «~» redondeado del total)', () => {
+    const r = parseDietPdf(
+      makePdf([day('Martes · entreno', 'Total: ~1.000 kcal · 80 g proteína · 100 g hidratos · 30 g grasa', [['Desayuno', '50 g de avena', '603', '40 g · 60 g · 15 g'], ['Cena', '200 g de pollo', '398', '41 g · 41 g · 14 g']])]),
+    );
+    expect(r.dayTargets).toEqual({ '2': { kcal: 1001, protein_g: 81, carbs_g: 101, fat_g: 29 } });
+    expect(r.targets.kcal).toBe(1001);
+  });
+  it('si alguna comida no trae calorías, se usa el total que indica el PDF', () => {
+    const r = parseDietPdf(
+      makePdf([day('Martes · entreno', 'Total: ~1.000 kcal · 80 g proteína · 100 g hidratos · 30 g grasa', [['Desayuno', '50 g de avena', '603', '40 g · 60 g · 15 g'], ['Cena', '200 g de pollo', '', '']])]),
+    );
+    expect(r.dayTargets).toEqual({ '2': { kcal: 1000, protein_g: 80, carbs_g: 100, fat_g: 30 } });
+  });
+});

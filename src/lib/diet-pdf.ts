@@ -115,10 +115,21 @@ export function pdfLinesToBlocks(pages: PdfLine[][]): { blocks: PdfMealBlock[]; 
   return { blocks, totals };
 }
 
-/** Objetivos de cada día a partir de su línea «Total». Un día solo cuenta si trae las cuatro cifras. */
-export function dayTargetsFromTotals(totals: Map<number, DayTotals>): DayTargets | null {
+/**
+ * Objetivos de cada día. Si todas las comidas de un día traen calorías y macros, el objetivo es su **suma exacta**
+ * (así el plan del día y el objetivo coinciden). Si no, se usa la línea «Total» del día, que suele ser un redondeo
+ * («~2.840 kcal»). Un día solo cuenta si tiene las cuatro cifras.
+ */
+export function dayTargetsFromTotals(totals: Map<number, DayTotals>, blocks: PdfMealBlock[] = []): DayTargets | null {
   const raw: Record<string, unknown> = {};
   for (const [day, t] of totals) raw[String(day)] = { kcal: t.kcal, protein_g: t.protein_g, carbs_g: t.carbs_g, fat_g: t.fat_g };
+  const days = new Set(blocks.map((b) => b.weekday));
+  for (const day of days) {
+    const meals = blocks.filter((b) => b.weekday === day && mealOf(b.meal) !== null);
+    if (!meals.length || !meals.every((b) => b.kcal !== undefined)) continue;
+    const sum = (k: 'kcal' | 'protein_g' | 'carbs_g' | 'fat_g') => Math.round(meals.reduce((a, b) => a + (b[k] ?? 0), 0));
+    raw[String(day)] = { kcal: sum('kcal'), protein_g: sum('protein_g'), carbs_g: sum('carbs_g'), fat_g: sum('fat_g') };
+  }
   return cleanDayTargets(raw);
 }
 
@@ -146,13 +157,13 @@ export function parseDietPdf(bytes: Uint8Array): ParsedDiet {
       entries.push(...parseDietSheets([{ name: 'PDF', rows }]).entries);
     }
   }
-  const dayTargets = dayTargetsFromTotals(totals);
+  const dayTargets = dayTargetsFromTotals(totals, blocks);
   const targets: ImportTargets = dayTargets ? averageOfDays(dayTargets) : {};
   const varies = !!dayTargets && Object.values(dayTargets).some((t) => Math.abs(t.kcal - targets.kcal!) > 0.03 * targets.kcal!);
   const notes: string[] = [];
   if (entries.some((e) => e.kcal > 0)) notes.push('Cada comida del PDF entra como una sola entrada, con las calorías y los macros que indica el PDF para esa comida.');
   else if (entries.length) notes.push('Este PDF no trae calorías por comida: las comidas se importan sin calorías ni macros.');
-  if (varies) notes.push('El PDF indica totales distintos cada día: se aplican como objetivo de cada día. El objetivo general queda con la media semanal.');
+  if (varies) notes.push('El PDF indica totales distintos cada día: se aplican como objetivo de cada día (la suma de sus comidas si todas traen calorías; si no, el total que indica el PDF). El objetivo general queda con la media semanal.');
   if (entries.length > MAX_ENTRIES) notes.push(`El archivo tiene más de ${MAX_ENTRIES} alimentos: solo se importan los ${MAX_ENTRIES} primeros.`);
   return { layout: 'pdf', sheet: null, entries: entries.slice(0, MAX_ENTRIES), targets, ...(dayTargets ? { dayTargets } : {}), skipped, notes };
 }
