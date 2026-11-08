@@ -3,6 +3,7 @@ import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MacroRow } from '../../src/components/plan-summary';
 import { Button, Card, ErrorText, LinkButton, Screen, Text } from '../../src/components/ui';
+import { targetsForWeekday } from '../../src/lib/day-targets';
 import { addWater, getLogs, getWaterMl } from '../../src/lib/diet';
 import { addDays, formatMl, isoWeekday, sumMacros, toISODate, type Meal } from '../../src/lib/diet-math';
 import { tap } from '../../src/lib/haptics';
@@ -38,7 +39,8 @@ export default function Inicio() {
   const [actionError, setActionError] = useState<string | null>(null);
 
   const total = sumMacros(data?.logs ?? []);
-  const kcalTarget = profile?.target_kcal ?? null;
+  const todayTargets = targetsForWeekday(profile, weekday);
+  const kcalTarget = todayTargets.kcal;
   const waterGoal = profile?.water_goal_ml ?? 2500;
   const left = (target: number | null | undefined, used: number) => (target != null ? Math.round(target - used) : null);
   const kcalLeft = left(kcalTarget, total.kcal);
@@ -133,9 +135,9 @@ export default function Inicio() {
         </Text>
         <View style={{ paddingTop: spacing.sm, gap: spacing.xs }}>
           <MacroRow
-            proteinG={Math.max(0, left(profile?.target_protein_g, total.protein_g) ?? 0)}
-            carbsG={Math.max(0, left(profile?.target_carbs_g, total.carbs_g) ?? 0)}
-            fatG={Math.max(0, left(profile?.target_fat_g, total.fat_g) ?? 0)}
+            proteinG={Math.max(0, left(todayTargets.protein_g, total.protein_g) ?? 0)}
+            carbsG={Math.max(0, left(todayTargets.carbs_g, total.carbs_g) ?? 0)}
+            fatG={Math.max(0, left(todayTargets.fat_g, total.fat_g) ?? 0)}
           />
           <Text variant="caption" muted>
             Gramos que te quedan de cada macro.

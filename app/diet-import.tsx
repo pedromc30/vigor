@@ -62,6 +62,7 @@ export default function DietImport() {
   }, [parsed]);
 
   const hasTargets = !!parsed && Object.keys(parsed.targets).length > 0;
+  const perDay = parsed?.dayTargets ?? null;
   const chosenEntries = [...days].reduce((n, d) => n + (entriesByDay.get(d)?.length ?? 0), 0);
   const nothing = chosenEntries === 0 && !(hasTargets && applyTargets);
 
@@ -86,13 +87,14 @@ export default function DietImport() {
           ...(t.protein_g !== undefined ? { target_protein_g: t.protein_g } : {}),
           ...(t.carbs_g !== undefined ? { target_carbs_g: t.carbs_g } : {}),
           ...(t.fat_g !== undefined ? { target_fat_g: t.fat_g } : {}),
+          ...(perDay ? { day_targets: perDay } : {}),
           targets_manual: true,
         });
       }
       success();
       const parts = [
         chosenEntries ? `${chosenEntries} alimentos en el planificador (${days.size} ${days.size === 1 ? 'día' : 'días'})` : null,
-        hasTargets && applyTargets ? 'objetivos diarios' : null,
+        hasTargets && applyTargets ? (perDay ? 'objetivos de cada día' : 'objetivos diarios') : null,
       ].filter(Boolean);
       setDone(`Listo: ${parts.join(' y ')}.`);
     } catch {
@@ -165,17 +167,40 @@ export default function DietImport() {
             <Card>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md }}>
                 <View style={{ flex: 1 }}>
-                  <Text variant="label">Objetivos diarios</Text>
-                  <Text>
-                    {[
-                      parsed.targets.kcal !== undefined ? `${parsed.targets.kcal} kcal` : null,
-                      parsed.targets.protein_g !== undefined ? `proteína ${parsed.targets.protein_g} g` : null,
-                      parsed.targets.carbs_g !== undefined ? `carbohidratos ${parsed.targets.carbs_g} g` : null,
-                      parsed.targets.fat_g !== undefined ? `grasa ${parsed.targets.fat_g} g` : null,
-                    ]
-                      .filter(Boolean)
-                      .join(' · ')}
-                  </Text>
+                  <Text variant="label">{perDay ? 'Objetivos diarios por día' : 'Objetivos diarios'}</Text>
+                  {perDay ? (
+                    <View style={{ marginTop: spacing.xs }}>
+                      {[1, 2, 3, 4, 5, 6, 7].map((d) => {
+                        const t = perDay[String(d)];
+                        if (!t) return null;
+                        return (
+                          <View key={d} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3, gap: spacing.md }}>
+                            <Text variant="label">{WEEKDAY_LONG[d][0].toUpperCase() + WEEKDAY_LONG[d].slice(1)}</Text>
+                            <View style={{ alignItems: 'flex-end' }}>
+                              <Text>{t.kcal} kcal</Text>
+                              <Text variant="caption" muted>
+                                P {t.protein_g} · C {t.carbs_g} · G {t.fat_g}
+                              </Text>
+                            </View>
+                          </View>
+                        );
+                      })}
+                      <Text variant="caption" muted style={{ marginTop: spacing.xs }}>
+                        Media semanal: {parsed.targets.kcal} kcal. Se usa de objetivo general y para los días sin objetivo propio.
+                      </Text>
+                    </View>
+                  ) : (
+                    <Text>
+                      {[
+                        parsed.targets.kcal !== undefined ? `${parsed.targets.kcal} kcal` : null,
+                        parsed.targets.protein_g !== undefined ? `proteína ${parsed.targets.protein_g} g` : null,
+                        parsed.targets.carbs_g !== undefined ? `carbohidratos ${parsed.targets.carbs_g} g` : null,
+                        parsed.targets.fat_g !== undefined ? `grasa ${parsed.targets.fat_g} g` : null,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </Text>
+                  )}
                   {profile?.target_kcal ? (
                     <Text variant="caption" muted>
                       Ahora: {profile.target_kcal} kcal · P {formatKg(profile.target_protein_g ?? 0)} g · C {formatKg(profile.target_carbs_g ?? 0)} g · G {formatKg(profile.target_fat_g ?? 0)} g

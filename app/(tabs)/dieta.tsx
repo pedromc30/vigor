@@ -18,6 +18,7 @@ import {
   toISODate,
   type Meal,
 } from '../../src/lib/diet-math';
+import { targetsForDate } from '../../src/lib/day-targets';
 import { tap } from '../../src/lib/haptics';
 import { WEEKDAY_LONG } from '../../src/lib/labels';
 import { formatKg } from '../../src/lib/training-math';
@@ -95,7 +96,8 @@ export default function Dieta() {
       tap();
     }, 'No se pudo añadir al diario. Comprueba tu conexión.');
   const total = sumMacros(logs);
-  const kcalTarget = profile?.target_kcal ?? null;
+  const dayTargets = targetsForDate(profile, date);
+  const kcalTarget = dayTargets.kcal;
   const waterGoal = profile?.water_goal_ml ?? 2500;
   const water = data?.water ?? 0;
   const remaining = kcalTarget != null ? kcalTarget - total.kcal : null;
@@ -136,7 +138,7 @@ export default function Dieta() {
 
       <Card tone="mint">
         <Text variant="caption" muted>
-          Calorías
+          {dayTargets.perDay ? `Calorías · objetivo del ${WEEKDAY_LONG[weekday]}` : 'Calorías'}
         </Text>
         <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm }}>
           <Text variant="display" style={{ fontSize: 48, lineHeight: 54, fontVariant: ['tabular-nums'] }}>
@@ -153,9 +155,9 @@ export default function Dieta() {
           </Text>
         ) : null}
         <View style={{ height: spacing.xs }} />
-        <MacroBar label="Proteína" consumed={total.protein_g} target={profile?.target_protein_g ?? null} color={colors.protein} />
-        <MacroBar label="Carbohidratos" consumed={total.carbs_g} target={profile?.target_carbs_g ?? null} color={colors.carbs} />
-        <MacroBar label="Grasa" consumed={total.fat_g} target={profile?.target_fat_g ?? null} color={colors.fat} />
+        <MacroBar label="Proteína" consumed={total.protein_g} target={dayTargets.protein_g} color={colors.protein} />
+        <MacroBar label="Carbohidratos" consumed={total.carbs_g} target={dayTargets.carbs_g} color={colors.carbs} />
+        <MacroBar label="Grasa" consumed={total.fat_g} target={dayTargets.fat_g} color={colors.fat} />
       </Card>
 
       {planned.length ? (

@@ -4,6 +4,7 @@
 import { MAX_ENTRIES, type ImportEntry, type ImportTargets, type ParsedDiet, mealOf, parseDietSheets, splitItems, weekdayOf } from './diet-import';
 import { type PdfLine, readPdfLines } from './pdf-text';
 import { SpreadsheetError } from './spreadsheet';
+import { averageOfDays, cleanDayTargets, type DayTargets } from './day-targets';
 
 const DAY_NAMES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
@@ -114,17 +115,11 @@ export function pdfLinesToBlocks(pages: PdfLine[][]): { blocks: PdfMealBlock[]; 
   return { blocks, totals };
 }
 
-/** Objetivos diarios a partir de los totales de cada día: la media semanal (la app tiene un solo objetivo diario). */
-export function averageTargets(totals: Map<number, DayTotals>): { targets: ImportTargets; varies: boolean } {
-  const targets: ImportTargets = {};
-  let varies = false;
-  for (const k of ['kcal', 'protein_g', 'carbs_g', 'fat_g'] as const) {
-    const v = [...totals.values()].map((t) => t[k]).filter((x): x is number => x !== undefined);
-    if (!v.length) continue;
-    targets[k] = Math.round(v.reduce((a, b) => a + b, 0) / v.length);
-    if (Math.max(...v) - Math.min(...v) > 0.05 * targets[k]!) varies = true;
-  }
-  return { targets, varies };
+/** Objetivos de cada día a partir de su línea «Total». Un día solo cuenta si trae las cuatro cifras. */
+export function dayTargetsFromTotals(totals: Map<number, DayTotals>): DayTargets | null {
+  const raw: Record<string, unknown> = {};
+  for (const [day, t] of totals) raw[String(day)] = { kcal: t.kcal, protein_g: t.protein_g, carbs_g: t.carbs_g, fat_g: t.fat_g };
+  return cleanDayTargets(raw);
 }
 
 const clip = (t: string) => (t.length > 160 ? t.slice(0, 159).trimEnd() + '…' : t);
@@ -151,11 +146,13 @@ export function parseDietPdf(bytes: Uint8Array): ParsedDiet {
       entries.push(...parseDietSheets([{ name: 'PDF', rows }]).entries);
     }
   }
-  const { targets, varies } = averageTargets(totals);
+  const dayTargets = dayTargetsFromTotals(totals);
+  const targets: ImportTargets = dayTargets ? averageOfDays(dayTargets) : {};
+  const varies = !!dayTargets && Object.values(dayTargets).some((t) => Math.abs(t.kcal - targets.kcal!) > 0.03 * targets.kcal!);
   const notes: string[] = [];
   if (entries.some((e) => e.kcal > 0)) notes.push('Cada comida del PDF entra como una sola entrada, con las calorías y los macros que indica el PDF para esa comida.');
   else if (entries.length) notes.push('Este PDF no trae calorías por comida: las comidas se importan sin calorías ni macros.');
-  if (varies) notes.push('El PDF indica totales distintos cada día. La app tiene un único objetivo diario: se propone la media semanal.');
+  if (varies) notes.push('El PDF indica totales distintos cada día: se aplican como objetivo de cada día. El objetivo general queda con la media semanal.');
   if (entries.length > MAX_ENTRIES) notes.push(`El archivo tiene más de ${MAX_ENTRIES} alimentos: solo se importan los ${MAX_ENTRIES} primeros.`);
-  return { layout: 'pdf', sheet: null, entries: entries.slice(0, MAX_ENTRIES), targets, skipped, notes };
+  return { layout: 'pdf', sheet: null, entries: entries.slice(0, MAX_ENTRIES), targets, ...(dayTargets ? { dayTargets } : {}), skipped, notes };
 }

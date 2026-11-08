@@ -1,13 +1,16 @@
 import { useState } from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/providers/AuthProvider';
 import { runDeleteAccount } from '../../src/lib/account';
 import { confirmSignOut } from '../../src/lib/offline/session';
-import { ACTIVITY_LABELS, DIET_LABELS, GOAL_LABELS, SEX_LABELS, ALLERGEN_OPTIONS } from '../../src/lib/labels';
+import { ACTIVITY_LABELS, DIET_LABELS, GOAL_LABELS, SEX_LABELS, ALLERGEN_OPTIONS, WEEKDAY_LONG } from '../../src/lib/labels';
 import { MacroRow } from '../../src/components/plan-summary';
 import { FORMULA_LABELS, bmrFormula } from '../../src/lib/nutrition';
-import { Button, Card, Disclaimer, ErrorText, LinkRow, Screen, Text } from '../../src/components/ui';
+import { Button, Card, Disclaimer, ErrorText, LinkButton, LinkRow, Screen, Text } from '../../src/components/ui';
+import { spacing } from '../../src/theme';
+import { confirm } from '../../src/lib/confirm';
+import { cleanDayTargets } from '../../src/lib/day-targets';
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
@@ -20,11 +23,22 @@ function Row({ label, value }: { label: string; value: string }) {
 
 export default function Perfil() {
   const router = useRouter();
-  const { session, profile, signOut } = useAuth();
+  const { session, profile, signOut, saveProfile } = useAuth();
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   if (!profile) return null;
+
+  const perDay = cleanDayTargets(profile.day_targets);
+
+  const removePerDay = async () => {
+    if (!(await confirm('Quitar objetivos por día', 'Todos los días usarán el objetivo general. ¿Seguro?', 'Quitar', true))) return;
+    try {
+      await saveProfile({ day_targets: null });
+    } catch {
+      setError('No se pudo guardar. Comprueba tu conexión e inténtalo de nuevo.');
+    }
+  };
 
   const allergyNames = profile.allergies.map((a) => ALLERGEN_OPTIONS.find((o) => o.key === a)?.label ?? a);
 
@@ -67,7 +81,32 @@ export default function Perfil() {
         <Text variant="caption" muted>
           {profile.targets_manual ? 'Editados manualmente.' : `Calculados automáticamente (${FORMULA_LABELS[bmrFormula({ bodyFatPct: profile.body_fat_pct })]}).`}
         </Text>
+        {perDay ? (
+          <View style={{ gap: 2 }}>
+            <Text variant="caption" muted>
+              Objetivo de cada día (media semanal arriba)
+            </Text>
+            {[1, 2, 3, 4, 5, 6, 7].map((d) => {
+              const t = perDay[String(d)];
+              return (
+                <Pressable
+                  key={d}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Objetivo del ${WEEKDAY_LONG[d]}`}
+                  onPress={() => router.push({ pathname: '/edit-day-target', params: { day: String(d) } })}
+                  style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', minHeight: 40, gap: spacing.md }}
+                >
+                  <Text variant="label">{WEEKDAY_LONG[d][0].toUpperCase() + WEEKDAY_LONG[d].slice(1)}</Text>
+                  <Text variant="caption" muted>
+                    {t ? `${t.kcal} kcal · P ${t.protein_g} · C ${t.carbs_g} · G ${t.fat_g}` : 'Objetivo general'}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        ) : null}
         <Button title="Editar objetivos" variant="secondary" onPress={() => router.push('/edit-targets')} />
+        {perDay ? <LinkButton title="Quitar los objetivos por día" danger onPress={() => void removePerDay()} /> : null}
       </Card>
 
       <View>

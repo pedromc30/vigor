@@ -56,6 +56,7 @@ function RootStack() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="edit-profile" options={{ presentation: 'modal' }} />
         <Stack.Screen name="edit-targets" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="edit-day-target" options={{ presentation: 'modal' }} />
         <Stack.Screen name="exercises" />
         <Stack.Screen name="history" />
         <Stack.Screen name="achievements" />

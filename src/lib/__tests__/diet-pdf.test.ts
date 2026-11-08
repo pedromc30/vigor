@@ -1,5 +1,5 @@
 import { makePdf, type PdfItem } from '../__fixtures__/pdf';
-import { averageTargets, parseDietPdf, parseMacros, parseTotals } from '../diet-pdf';
+import { dayTargetsFromTotals, parseDietPdf, parseMacros, parseTotals } from '../diet-pdf';
 import { readPdfLines } from '../pdf-text';
 import { SpreadsheetError } from '../spreadsheet';
 
@@ -55,11 +55,10 @@ describe('parseTotals / averageTargets', () => {
     expect(parseTotals('Total: ~2.860 kcal · 217 g proteína · 358 g hidratos · 57 g grasa')).toEqual({ kcal: 2860, protein_g: 217, carbs_g: 358, fat_g: 57 });
     expect(parseTotals('Lunes · libre')).toBeNull();
   });
-  it('promedia los días y avisa si varían', () => {
-    const r = averageTargets(new Map([[1, { kcal: 2800, protein_g: 200 }], [7, { kcal: 2400, protein_g: 190 }]]));
-    expect(r.targets).toEqual({ kcal: 2600, protein_g: 195 });
-    expect(r.varies).toBe(true);
-    expect(averageTargets(new Map([[1, { kcal: 2000 }], [2, { kcal: 2000 }]])).varies).toBe(false);
+  it('un objetivo por día: solo cuentan los días con las cuatro cifras', () => {
+    const r = dayTargetsFromTotals(new Map([[1, { kcal: 2800, protein_g: 200, carbs_g: 350, fat_g: 60 }], [2, { kcal: 2400 }], [7, { kcal: 2400, protein_g: 190, carbs_g: 240, fat_g: 64 }]]));
+    expect(r).toEqual({ '1': { kcal: 2800, protein_g: 200, carbs_g: 350, fat_g: 60 }, '7': { kcal: 2400, protein_g: 190, carbs_g: 240, fat_g: 64 } });
+    expect(dayTargetsFromTotals(new Map())).toBeNull();
   });
 });
 
@@ -84,9 +83,10 @@ describe('parseDietPdf', () => {
     expect(r.entries.filter((e) => e.weekday === 7).map((e) => e.name)).toEqual(['avena', 'nueces']);
     expect(r.entries.some((e) => /equivalencias|no es una comida/.test(e.name))).toBe(false);
   });
-  it('propone la media de los totales como objetivos y lo explica', () => {
+  it('trae el objetivo de cada día y deja la media como objetivo general', () => {
+    expect(r.dayTargets).toEqual({ '1': { kcal: 2800, protein_g: 200, carbs_g: 350, fat_g: 60 }, '7': { kcal: 2400, protein_g: 190, carbs_g: 240, fat_g: 64 } });
     expect(r.targets).toEqual({ kcal: 2600, protein_g: 195, carbs_g: 295, fat_g: 62 });
-    expect(r.notes.some((n) => /media semanal/.test(n))).toBe(true);
+    expect(r.notes.some((n) => /objetivo de cada día/.test(n))).toBe(true);
     expect(r.notes.some((n) => /sin calorías/.test(n))).toBe(true);
   });
   it('un PDF que no es una dieta no da alimentos y un archivo roto da un error legible', () => {

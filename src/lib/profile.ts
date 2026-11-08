@@ -1,6 +1,7 @@
 import { deleteAllDietFiles } from './diet-files';
 import { deleteAllPhotoFiles } from './progress';
 import { supabase } from './supabase';
+import type { DayTargets } from './day-targets';
 import type { ActivityLevel, Goal, Sex } from './nutrition';
 
 export type DietPreference = 'omnivore' | 'vegetarian' | 'vegan';
@@ -23,6 +24,8 @@ export interface Profile {
   target_protein_g: number | null;
   target_fat_g: number | null;
   target_carbs_g: number | null;
+  /** Objetivos propios de cada día de la semana (1 = lunes … 7 = domingo); null si solo hay objetivo general. */
+  day_targets: DayTargets | null;
   targets_manual: boolean;
   water_goal_ml: number;
   health_consent_at: string | null;

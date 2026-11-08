@@ -5,6 +5,7 @@ import { Button, Card, ChipSingle, ErrorText, LinkButton, Screen, Text } from '.
 import { clearPlanDay, deletePlanEntry, listPlan } from '../src/lib/diet';
 import { MEALS, MEAL_LABELS, isoWeekday, sumMacros, toISODate } from '../src/lib/diet-math';
 import { WEEKDAY_LONG, WEEKDAY_SHORT } from '../src/lib/labels';
+import { targetsForWeekday } from '../src/lib/day-targets';
 import { formatKg } from '../src/lib/training-math';
 import { useFocusData } from '../src/lib/use-focus-data';
 import { useAuth } from '../src/providers/AuthProvider';
@@ -47,7 +48,7 @@ export default function Plan() {
       <Card>
         <Text variant="title">
           {Math.round(total.kcal)}
-          <Text muted> / {profile?.target_kcal ?? '—'} kcal</Text>
+          <Text muted> / {targetsForWeekday(profile, weekday).kcal ?? '—'} kcal</Text>
         </Text>
         <Text variant="caption" muted>
           P {Math.round(total.protein_g)} g · C {Math.round(total.carbs_g)} g · G {Math.round(total.fat_g)} g

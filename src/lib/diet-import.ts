@@ -3,6 +3,7 @@
 import type { Meal } from './diet-math';
 import type { EntryDraft } from './diet';
 import type { Sheet } from './spreadsheet';
+import type { DayTargets } from './day-targets';
 
 export interface ImportEntry {
   weekday: number; // 1 = lunes … 7 = domingo
@@ -30,6 +31,8 @@ export interface ParsedDiet {
   sheet: string | null;
   entries: ImportEntry[];
   targets: ImportTargets;
+  /** Objetivos propios de cada día de la semana (PDF con una línea «Total» por día). */
+  dayTargets?: DayTargets;
   /** Textos que se han leído pero no se han podido colocar (comida o día no reconocidos). */
   skipped: string[];
   /** Avisos para el usuario: lo que la app ha tenido que suponer. */
