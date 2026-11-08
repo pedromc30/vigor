@@ -1,7 +1,8 @@
 // Lógica pura de dieta: macros por cantidad, recetas, totales, fechas, alérgenos y lista de la compra.
 import { ingredientsFromText } from './shopping-text';
 
-export const MEALS = ['desayuno', 'comida', 'merienda', 'cena', 'snacks'] as const;
+// Orden de las comidas del día (la clave interna «snacks» es la de «Media mañana»; no se cambia por compatibilidad con la base de datos).
+export const MEALS = ['desayuno', 'snacks', 'comida', 'merienda', 'cena'] as const;
 export type Meal = (typeof MEALS)[number];
 
 export const MEAL_LABELS: Record<Meal, string> = {
@@ -9,7 +10,7 @@ export const MEAL_LABELS: Record<Meal, string> = {
   comida: 'Comida',
   merienda: 'Merienda',
   cena: 'Cena',
-  snacks: 'Snacks',
+  snacks: 'Media mañana',
 };
 
 export interface Macros {
