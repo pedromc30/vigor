@@ -34,7 +34,7 @@ App móvil (Expo + React Native + TypeScript, backend Supabase) que combina entr
 - Biblioteca: 46 ejercicios de catálogo (solo lectura) + ejercicios propios por usuario.
 - Rutinas con varios días (series, repeticiones objetivo, descanso, notas, día de la semana). Se guardan con la función `save_routine` (transacción única).
 - Sesión en vivo: peso, repeticiones y RPE por serie; cada serie se guarda al marcarla; descanso automático con cuenta atrás; muestra la última sesión del ejercicio.
-- 1RM con Epley (solo series de hasta 12 repeticiones). Progresión: si se completan todas las series con las repeticiones objetivo, se sugiere +2,5 kg (`PROGRESSION_STEP_KG`).
+- 1RM con Epley (solo series de hasta 10 repeticiones: los estudios lo validan con series cortas). Progresión: si se completan todas las series con las repeticiones objetivo, se sugiere +2,5 kg (`PROGRESSION_STEP_KG`).
 - Historial de sesiones y volumen semanal (series y kg) por grupo muscular, de lunes a domingo.
 
 ### Mejoras del entreno (migración `0006_training_improvements.sql`)
@@ -49,7 +49,7 @@ App móvil (Expo + React Native + TypeScript, backend Supabase) que combina entr
 ### Logros y evolución de cargas (migración `0007_goals_achievements.sql`)
 
 - **Objetivos por ejercicio** (`exercise_goals`): «peso × repeticiones», de carga (sentadilla 100 kg × 1) o de repeticiones con un peso dado (dominadas 12 reps con peso corporal = 0 kg; press de banca 80 kg × 8). Se cumplen con una serie *normal* que alcance a la vez la carga y las repeticiones. Se crean, editan y borran desde Progreso → Logros. Un objetivo que ya está cumplido con el historial se rechaza (hay que pedir uno mayor). El progreso en % es la mejor marca actual frente al objetivo (nunca marca 100 % sin cumplirlo).
-- **Récords personales automáticos**, al guardar cada serie normal (la regla está en `src/lib/achievements.ts`): de **peso** (más carga que nunca), de **repeticiones** (más repeticiones que nunca con un peso igual o mayor) y de **1RM estimado** (Epley, hasta 12 repeticiones). La primera serie de un ejercicio solo fija la marca de partida. Las series de aproximación y los dropsets **no** generan logros ni récords.
+- **Récords personales automáticos**, al guardar cada serie normal (la regla está en `src/lib/achievements.ts`): de **peso** (más carga que nunca), de **repeticiones** (más repeticiones que nunca con un peso igual o mayor) y de **1RM estimado** (Epley, hasta 10 repeticiones). La primera serie de un ejercicio solo fija la marca de partida. Las series de aproximación y los dropsets **no** generan logros ni récords.
 - **Celebración** al conseguir un récord o un objetivo: aviso breve con vibración, sin bloquear el entreno (si se consiguen varios, salen en cola). Cada logro se guarda en `achievements` con fecha, ejercicio, valor y la serie que lo consiguió.
 - **Historial anterior:** la primera vez que se abre Progreso o Logros se recorre el historial con la misma regla y los récords que ya había se guardan **sin celebrarlos** (es idempotente y se hace una vez por usuario).
 - **Deshacer una serie** (o borrar su sesión) elimina sus logros en cascada, y si era el que cumplía un objetivo, el objetivo vuelve a estar pendiente (trigger de la base de datos).
@@ -114,7 +114,7 @@ Perfil → **Exportar datos (CSV)**: un archivo por tipo (perfil, entrenos, ruti
 
 ## RGPD
 
-- Consentimiento explícito para datos de salud en el onboarding (fecha y versión guardadas); se muestra en **Perfil → Privacidad y datos**.
+- Consentimiento explícito para datos de salud en el onboarding (fecha y versión guardadas; versión actual `2026-11-v2`, que ya cita el % de grasa, los objetivos por día y la lectura local de los archivos de dieta); se muestra en **Perfil → Privacidad y datos**.
 - Derechos: acceso/portabilidad (CSV), rectificación (editar perfil), supresión (eliminar cuenta: borra primero los archivos de fotos del Storage y después la cuenta; el resto se elimina en cascada).
 - RLS en todas las tablas y bucket privado con URL firmadas.
 

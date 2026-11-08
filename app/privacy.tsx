@@ -55,8 +55,12 @@ export default function Privacy() {
 
       <Section title="Qué datos guardamos">
         <Text>
-          Tu email para la cuenta y, con tu consentimiento, datos de salud: sexo, edad, altura, peso, nivel de actividad, objetivo, alergias y preferencias de
-          dieta; tus entrenos, tu diario de comidas y agua, tus medidas corporales, las fotos de progreso y los archivos de dieta que subas.
+          Tu email para la cuenta y, con tu consentimiento, datos de salud: sexo, edad, altura, peso, % de grasa corporal (opcional), nivel de actividad,
+          objetivo, alergias y preferencias de dieta; tus objetivos de calorías y macros (también los de cada día de la semana), tus entrenos, tu diario de
+          comidas y agua, tus medidas corporales, las fotos de progreso y los archivos de dieta que subas.
+        </Text>
+        <Text variant="caption" muted>
+          Cuando usas un archivo de dieta para rellenar tu planificador, el PDF, Excel o CSV se lee en tu móvil: su contenido no se envía a ningún tercero.
         </Text>
         <Text muted>Cuenta registrada: {session?.user.email ?? '—'}</Text>
       </Section>
@@ -69,6 +73,17 @@ export default function Privacy() {
         <Text variant="caption" muted>
           Excepción: al buscar un alimento o escanear un código, el texto o el código se envía a Open Food Facts, un servicio de terceros, que verá tu
           dirección IP. No se le envía nada más.
+        </Text>
+      </Section>
+
+      <Section title="Cuánto tiempo y base legal">
+        <Text>
+          Guardamos tus datos mientras tengas cuenta. Al eliminarla se borran de la base de datos y de los espacios de archivos. Tu email se usa para
+          darte acceso a la aplicación (necesario para prestar el servicio, art. 6.1.b del RGPD); los datos de salud, con tu consentimiento.
+        </Text>
+        <Text variant="caption" muted>
+          El proveedor de la base de datos puede conservar copias de seguridad durante un tiempo limitado según su propia política. Vigor es solo para
+          mayores de 18 años.
         </Text>
       </Section>
 

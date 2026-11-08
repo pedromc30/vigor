@@ -26,11 +26,12 @@ describe('epley1RM', () => {
 });
 
 describe('bestEstimated1RM', () => {
-  it('toma el mayor y descarta series de más de 12 repeticiones', () => {
+  it('toma el mayor y descarta series de más de 10 repeticiones', () => {
     const best = bestEstimated1RM([
       { weightKg: 100, reps: 5 },
       { weightKg: 60, reps: 8 },
       { weightKg: 150, reps: 20 },
+      { weightKg: 120, reps: 11 },
     ]);
     expect(best).toBeCloseTo(116.667, 3);
   });

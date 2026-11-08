@@ -455,7 +455,7 @@ export default function Progreso() {
               {points.length < 2 ? (
                 <Text muted>
                   {points.length === 0 && metric === '1rm'
-                    ? 'En este periodo no hay series de hasta 12 repeticiones para estimar el 1RM.'
+                    ? 'En este periodo no hay series de hasta 10 repeticiones para estimar el 1RM.'
                     : 'Hay menos de 2 sesiones de este ejercicio en este periodo. Prueba con un rango mayor.'}
                 </Text>
               ) : (

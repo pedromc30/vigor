@@ -6,7 +6,7 @@ import type { ActivityLevel, Goal, Sex } from './nutrition';
 
 export type DietPreference = 'omnivore' | 'vegetarian' | 'vegan';
 
-export const CONSENT_VERSION = '2026-10-v1';
+export const CONSENT_VERSION = '2026-11-v2';
 
 export interface Profile {
   id: string;

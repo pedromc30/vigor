@@ -79,7 +79,7 @@ export default function Photos() {
       <Card>
         <Text variant="label">Privadas</Text>
         <Text variant="caption" muted>
-          Se guardan en un espacio privado de tu cuenta: solo tú puedes verlas y se muestran con enlaces temporales. Al eliminar tu cuenta se borran también.
+          Se guardan en un espacio privado de tu cuenta: desde la app solo tu cuenta puede verlas y se muestran con enlaces temporales. Al eliminar tu cuenta se borran también.
         </Text>
       </Card>
 

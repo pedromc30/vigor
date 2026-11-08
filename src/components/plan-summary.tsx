@@ -20,7 +20,7 @@ export function MacroRow({ proteinG, fatG, carbsG }: { proteinG: number; fatG: n
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: i.color }} />
-            <Text variant="caption" muted>
+            <Text variant="caption" muted numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={{ flexShrink: 1 }}>
               {i.label}
             </Text>
           </View>

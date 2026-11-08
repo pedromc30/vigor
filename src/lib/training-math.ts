@@ -3,8 +3,8 @@
 /** Incremento de carga sugerido cuando se completan todas las repeticiones objetivo. */
 export const PROGRESSION_STEP_KG = 2.5;
 
-/** Epley pierde precisión con muchas repeticiones, así que solo se estima hasta este número. */
-export const MAX_REPS_FOR_1RM = 12;
+/** Epley pierde precisión con muchas repeticiones (los estudios lo validan con series de hasta unas 10), así que solo se estima hasta este número. */
+export const MAX_REPS_FOR_1RM = 10;
 
 /** Tipo de serie: normal, de aproximación (calentamiento) o dropset. Sin tipo = normal. */
 export type SetType = 'normal' | 'warmup' | 'dropset';
@@ -28,7 +28,7 @@ export function epley1RM(weightKg: number, reps: number): number {
   return weightKg * (1 + reps / 30);
 }
 
-/** Mejor 1RM estimado de una lista de series (ignora las de aproximación y las de más de 12 repeticiones). */
+/** Mejor 1RM estimado de una lista de series (ignora las de aproximación y las de más de 10 repeticiones). */
 export function bestEstimated1RM(sets: SetData[]): number | null {
   const values = sets
     .filter((s) => !isWarmup(s) && s.reps <= MAX_REPS_FOR_1RM)

@@ -52,8 +52,8 @@ describe('detectPRs', () => {
   });
 
   it('récord de 1RM estimado (Epley) sin batir el peso ni las repeticiones', () => {
-    // 100×15 queda fuera del 1RM (más de 12 reps) pero impide el récord de reps de 95×12; 95×12 estima 133 > 116,7
-    expect(kinds([s(100, 5), s(100, 15)], s(95, 12))).toEqual(['pr_1rm']);
+    // 100×15 queda fuera del 1RM (más de 10 reps) pero impide el récord de reps de 95×10; 95×10 estima 126,7 > 116,7
+    expect(kinds([s(100, 5), s(100, 15)], s(95, 10))).toEqual(['pr_1rm']);
   });
 
   it('1RM: mejor estimación que nunca, con el valor redondeado a 0,1 kg', () => {
@@ -63,7 +63,9 @@ describe('detectPRs', () => {
     expect(e.find((x) => x.kind === 'pr_1rm')?.value).toBe(120.3);
   });
 
-  it('el 1RM solo se estima hasta 12 repeticiones y con carga', () => {
+  it('el 1RM solo se estima hasta 10 repeticiones y con carga', () => {
+    expect(kinds([s(100, 5)], s(90, 11))).not.toContain('pr_1rm'); // 11 reps: ya no se estima
+    expect(kinds([s(100, 5)], s(95, 10))).toContain('pr_1rm'); // 10 reps: sí (95 × (1 + 10/30) = 126,7 > 116,7)
     expect(kinds([s(100, 5)], s(60, 20))).not.toContain('pr_1rm'); // 20 reps: Epley pierde precisión
     expect(kinds([s(100, 5)], s(0, 30))).not.toContain('pr_1rm'); // sin carga no hay 1RM
   });

@@ -27,7 +27,7 @@ const r1 = (n: number) => Math.round(n * 10) / 10;
  * Récords que bate una serie frente a las anteriores del mismo ejercicio:
  *  - peso: más carga que nunca;
  *  - repeticiones: más repeticiones que nunca con un peso igual o mayor (si no hay series con ese peso, ya es de peso);
- *  - 1RM: mejor 1RM estimado (Epley, solo series de hasta 12 repeticiones y con carga).
+ *  - 1RM: mejor 1RM estimado (Epley, solo series de hasta 10 repeticiones y con carga).
  * Sin series anteriores no hay récord: la primera vez fija la marca de partida.
  */
 export function detectPRs(prior: WeightReps[], set: WeightReps): PREvent[] {
