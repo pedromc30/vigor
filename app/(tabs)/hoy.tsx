@@ -14,13 +14,7 @@ import { useFocusData } from '../../src/lib/use-focus-data';
 import { useAuth } from '../../src/providers/AuthProvider';
 import { radius, spacing, useTheme } from '../../src/theme';
 
-// Horario habitual de cada comida, solo para ordenar la línea del día (la app no guarda horas de comidas).
-const MEAL_TIME: Record<Meal, string> = { desayuno: '08:00', snacks: '10:30', comida: '14:00', merienda: '17:00', cena: '21:00' };
-const TRAINING_TIME = '18:30';
-
-type EventItem =
-  | { kind: 'meal'; time: string; meal: Meal }
-  | { kind: 'training'; time: string };
+type EventItem = { kind: 'meal'; meal: Meal } | { kind: 'training' };
 
 const draftOf = (p: PlanEntry): EntryDraft => ({
   meal: p.meal,
@@ -35,9 +29,8 @@ const draftOf = (p: PlanEntry): EntryDraft => ({
   fat_g: p.fat_g,
 });
 
-/** Una entrada de la línea del día: punto (relleno si está hecha), hora, título y cifra a la derecha. */
+/** Una entrada de la línea del día: punto (relleno si está hecha), título y cifra a la derecha. */
 function Event({
-  time,
   title,
   value,
   detail,
@@ -45,7 +38,6 @@ function Event({
   children,
   onPress,
 }: {
-  time: string;
   title: string;
   value?: string;
   detail?: string;
@@ -56,9 +48,6 @@ function Event({
   const { colors } = useTheme();
   return (
     <Pressable accessibilityRole={onPress ? 'button' : undefined} onPress={onPress} disabled={!onPress} style={{ marginBottom: spacing.lg }}>
-      <Text variant="caption" muted style={{ position: 'absolute', left: -78, top: 3, width: 40, textAlign: 'right', fontWeight: '700', fontSize: 12 }}>
-        {time}
-      </Text>
       <View
         style={{
           position: 'absolute',
@@ -193,11 +182,10 @@ export default function Hoy() {
       tap();
     }, 'No se pudo registrar el agua.');
 
-  // Línea del día: comidas y entreno ordenados por su horario habitual
-  const events: EventItem[] = [
-    ...MEALS.map((meal) => ({ kind: 'meal', time: MEAL_TIME[meal], meal }) as EventItem),
-    { kind: 'training', time: TRAINING_TIME } as EventItem,
-  ].sort((a, b) => a.time.localeCompare(b.time));
+  // Línea del día: las comidas en su orden y el entreno entre la merienda y la cena
+  const meals = MEALS.map((meal) => ({ kind: 'meal', meal }) as EventItem);
+  const at = meals.findIndex((e) => e.kind === 'meal' && e.meal === 'cena');
+  const events: EventItem[] = [...meals.slice(0, at), { kind: 'training' }, ...meals.slice(at)];
 
   const mealsDone = MEALS.filter((m) => logs.some((l) => l.meal === m)).length;
   const date = new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -240,15 +228,14 @@ export default function Hoy() {
         </Text>
       </View>
 
-      <View style={{ paddingLeft: 78, marginTop: -spacing.sm }}>
-        <View style={{ position: 'absolute', left: 56, top: 6, bottom: 24, width: 2, backgroundColor: colors.border }} />
+      <View style={{ paddingLeft: 30, marginTop: -spacing.sm }}>
+        <View style={{ position: 'absolute', left: 7, top: 6, bottom: 24, width: 2, backgroundColor: colors.border }} />
         {events.map((e) => {
           if (e.kind === 'training') {
             const active = data?.active;
             return (
               <Event
                 key="training"
-                time={e.time}
                 title={active ? `Entreno en curso · ${active.routine_name}` : scheduledToday.length ? `Entreno · ${scheduledToday[0].routine.name}` : 'Entreno'}
                 value={undefined}
                 detail={
@@ -280,7 +267,6 @@ export default function Hoy() {
           return (
             <Event
               key={e.meal}
-              time={e.time}
               title={MEAL_LABELS[e.meal]}
               value={shown.length ? String(kcal) : undefined}
               detail={shown.length ? shown.map((x) => x.name).join(' · ') : 'Sin planificar'}
