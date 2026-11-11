@@ -14,7 +14,7 @@
     "android": {
       "package": "app.vigor.mobile",
       "adaptiveIcon": {
-        "backgroundColor": "#047857",
+        "backgroundColor": "#D9502B",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -27,6 +27,18 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#F6F1E7",
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 220,
+          "dark": {
+            "backgroundColor": "#15120F",
+            "image": "./assets/splash-icon-dark.png"
+          }
+        }
+      ],
       [
         "expo-image-picker",
         {

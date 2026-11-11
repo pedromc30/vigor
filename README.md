@@ -88,6 +88,10 @@ Estilo «línea del día»: fondo crema (oscuro equivalente), tarjetas blancas c
 - **Plan:** menú con el planificador, la lista de la compra, el diario, archivos de dieta, alimentos y recetas, rutinas, historial y biblioteca.
 - Las pantallas interiores (planificador, rutinas, progreso, perfil…) heredan colores y letra, pero aún no están rediseñadas una a una.
 
+## Icono y pantalla de carga
+
+Icono: una «V» crema sobre terracota (Barlow Condensed). En Android es adaptable (fondo liso terracota + primer plano dentro de la zona segura + versión monocroma para iconos con tema). La pantalla de carga usa `expo-splash-screen` (plugin en `app.json`): el icono redondeado y «VIGOR» sobre crema, y una versión oscura. Los archivos están en `assets/`. **Solo se ven con un APK nuevo** (Expo Go muestra el icono de la app en vez de la pantalla de carga); conviene revisar en un móvil real cómo Android 12+ recorta la imagen central.
+
 ## Notas de dependencias
 
 Las versiones de los módulos nativos están fijadas a las que incluye Expo Go para el SDK 58 (`node_modules/expo/bundledNativeModules.json`). Importante: `@react-native-async-storage/async-storage` debe ser la **2.2.0**; la 3.x necesita un módulo nativo que Expo Go no trae y rompe el inicio de sesión en el móvil.
