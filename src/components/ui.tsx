@@ -16,15 +16,15 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { fontFamily, radius, spacing, useTheme } from '../theme';
+import { DISPLAY_FONT, fontFamily, radius, spacing, useTheme } from '../theme';
 
 type Variant = 'display' | 'title' | 'heading' | 'body' | 'caption' | 'label';
 
 // Escala tipográfica: cifras grandes en negrita, títulos firmes y un cuerpo cómodo de leer.
 const textStyles: Record<Variant, { fontSize: number; fontWeight: '400' | '500' | '600' | '700' | '800'; lineHeight: number; letterSpacing: number }> = {
-  display: { fontSize: 56, fontWeight: '800', lineHeight: 60, letterSpacing: -1.5 },
-  title: { fontSize: 28, fontWeight: '800', lineHeight: 34, letterSpacing: -0.5 },
-  heading: { fontSize: 18, fontWeight: '700', lineHeight: 24, letterSpacing: -0.2 },
+  display: { fontSize: 72, fontWeight: '800', lineHeight: 68, letterSpacing: 0 },
+  title: { fontSize: 42, fontWeight: '800', lineHeight: 42, letterSpacing: 0.2 },
+  heading: { fontSize: 26, fontWeight: '800', lineHeight: 28, letterSpacing: 0.2 },
   body: { fontSize: 16, fontWeight: '500', lineHeight: 23, letterSpacing: 0 },
   caption: { fontSize: 13, fontWeight: '500', lineHeight: 18, letterSpacing: 0 },
   label: { fontSize: 14, fontWeight: '600', lineHeight: 20, letterSpacing: 0 },
@@ -40,12 +40,14 @@ export function Text({
   // El grosor (también el que se pasa en `style`) decide el archivo de la fuente; se quita `fontWeight` para no engrosarlo dos veces.
   const { fontWeight, ...custom } = (StyleSheet.flatten(style as StyleProp<TextStyle>) ?? {}) as TextStyle;
   const base = textStyles[variant];
+  // Títulos y cifras grandes: Barlow Condensed en mayúsculas. Si se pide un grosor concreto (texto corriente dentro de un título), Manrope.
+  const isDisplay = (variant === 'display' || variant === 'title' || variant === 'heading') && fontWeight === undefined;
   return (
     <RNText
       {...rest}
       style={[
-        { ...base, fontWeight: undefined },
-        { color: muted ? colors.textMuted : colors.text, fontFamily: fontFamily(fontWeight ?? base.fontWeight) },
+        isDisplay ? { ...base, fontWeight: undefined, textTransform: variant === 'display' ? 'none' : 'uppercase' } : { ...base, fontWeight: undefined, fontSize: variant === 'display' ? 40 : variant === 'title' ? 28 : variant === 'heading' ? 18 : base.fontSize, lineHeight: variant === 'display' ? 44 : variant === 'title' ? 34 : variant === 'heading' ? 24 : base.lineHeight },
+        { color: muted ? colors.textMuted : colors.text, fontFamily: isDisplay ? DISPLAY_FONT : fontFamily(fontWeight ?? (variant === 'body' || variant === 'caption' ? '500' : base.fontWeight === '800' ? '700' : base.fontWeight)) },
         custom,
       ]}
     />
@@ -97,7 +99,9 @@ export function Screen({
 export function Card({ children, style, tone }: { children: ReactNode; style?: ViewStyle; tone?: 'blue' | 'mint' | 'amber' }) {
   const { colors } = useTheme();
   const bg = tone === 'blue' ? colors.tintBlue : tone === 'mint' ? colors.tintMint : tone === 'amber' ? colors.tintAmber : colors.surface;
-  return <View style={[{ backgroundColor: bg, borderRadius: radius.lg, padding: spacing.lg, gap: spacing.sm }, style]}>{children}</View>;
+  return (
+    <View style={[{ backgroundColor: bg, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, padding: spacing.lg, gap: spacing.sm }, style]}>{children}</View>
+  );
 }
 
 /** Fila de navegación: título, ayuda opcional y una flecha. Sustituye a los botones apilados que solo llevan a otra pantalla. */
@@ -115,6 +119,8 @@ export function LinkRow({ title, hint, onPress }: { title: string; hint?: string
         gap: spacing.md,
         backgroundColor: colors.surface,
         borderRadius: radius.md,
+        borderWidth: 1,
+        borderColor: colors.border,
         paddingHorizontal: spacing.lg,
         paddingVertical: spacing.sm,
         marginBottom: spacing.sm,
@@ -153,8 +159,8 @@ export function Button({
 }) {
   const { colors } = useTheme();
   // Principal: tinta rellena. Secundario: solo contorno. Peligro: contorno rojo. Ghost: texto apagado.
-  const bg = { primary: colors.ink, secondary: colors.tintBlue, danger: 'transparent', ghost: 'transparent' }[variant];
-  const fg = { primary: colors.onInk, secondary: colors.primary, danger: colors.danger, ghost: colors.textMuted }[variant];
+  const bg = { primary: colors.primary, secondary: colors.surfaceAlt, danger: 'transparent', ghost: 'transparent' }[variant];
+  const fg = { primary: colors.onPrimary, secondary: colors.text, danger: colors.danger, ghost: colors.textMuted }[variant];
   const line = { primary: 'transparent', secondary: colors.border, danger: colors.danger, ghost: 'transparent' }[variant];
   const inactive = disabled || loading;
   return (
@@ -165,7 +171,7 @@ export function Button({
       disabled={inactive}
       style={({ pressed }) => ({
         backgroundColor: bg,
-        borderRadius: radius.md,
+        borderRadius: 999,
         borderWidth: variant === 'primary' || variant === 'ghost' || variant === 'secondary' ? 0 : 1,
         borderColor: line,
         minHeight: 52,
@@ -318,7 +324,7 @@ export function SegmentRow<T extends string | number>({
                 alignItems: 'center',
                 justifyContent: 'center',
                 borderRadius: radius.md,
-                backgroundColor: selected ? colors.ink : colors.surface,
+                backgroundColor: selected ? colors.ink : colors.surfaceAlt,
                 borderWidth: 0,
                 borderColor: selected ? colors.ink : colors.border,
               }}
@@ -366,7 +372,7 @@ export function ChipMulti({
                 minHeight: 40,
                 justifyContent: 'center',
                 borderRadius: 999,
-                backgroundColor: on ? colors.ink : colors.surface,
+                backgroundColor: on ? colors.ink : colors.surfaceAlt,
                 borderWidth: 0,
                 borderColor: on ? colors.ink : colors.border,
               }}
@@ -440,7 +446,7 @@ export function ChipSingle<T extends string>({
               minHeight: 36,
               justifyContent: 'center',
               borderRadius: 999,
-              backgroundColor: on ? colors.ink : colors.surface,
+              backgroundColor: on ? colors.ink : colors.surfaceAlt,
               borderWidth: 0,
               borderColor: on ? colors.ink : colors.border,
             }}

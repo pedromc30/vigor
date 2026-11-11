@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { TopTabs } from '../../src/components/top-tabs';
 import { useAuth } from '../../src/providers/AuthProvider';
 import { runDeleteAccount } from '../../src/lib/account';
 import { confirmSignOut } from '../../src/lib/offline/session';
@@ -52,6 +53,7 @@ export default function Perfil() {
 
   return (
     <Screen>
+      <TopTabs />
       <Text variant="title">Perfil</Text>
       <Text muted>{session?.user.email}</Text>
 

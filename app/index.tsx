@@ -6,5 +6,5 @@ export default function Index() {
   const { session, onboarded } = useAuth();
   if (!session) return <Redirect href="/login" />;
   if (!onboarded) return <Redirect href="/onboarding" />;
-  return <Redirect href="/home" />;
+  return <Redirect href="/hoy" />;
 }

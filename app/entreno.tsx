@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Button, Card, ErrorText, LinkRow, Screen, Text } from '../../src/components/ui';
-import { MUSCLE_LABELS, WEEKDAY_LONG } from '../../src/lib/labels';
-import { getActiveSession, getSetsSince, listRoutines, startSession } from '../../src/lib/training';
-import { formatKg, volumeByMuscleGroup, weekStart } from '../../src/lib/training-math';
-import { useFocusData } from '../../src/lib/use-focus-data';
-import { useAuth } from '../../src/providers/AuthProvider';
-import { spacing, useTheme } from '../../src/theme';
+import { Button, Card, ErrorText, LinkButton, LinkRow, Screen, Text } from '../src/components/ui';
+import { MUSCLE_LABELS, WEEKDAY_LONG } from '../src/lib/labels';
+import { getActiveSession, getSetsSince, listRoutines, startSession } from '../src/lib/training';
+import { formatKg, volumeByMuscleGroup, weekStart } from '../src/lib/training-math';
+import { useFocusData } from '../src/lib/use-focus-data';
+import { useAuth } from '../src/providers/AuthProvider';
+import { spacing, useTheme } from '../src/theme';
 
 export default function Entreno() {
   const router = useRouter();
@@ -42,6 +42,7 @@ export default function Entreno() {
 
   return (
     <Screen>
+      <LinkButton title="‹ Volver" onPress={() => router.back()} />
       <Text variant="title">Entreno</Text>
       <ErrorText>{error}</ErrorText>
       <ErrorText>{actionError}</ErrorText>

@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { CopyMealModal, SaveFavoriteModal } from '../../src/components/meal-modals';
-import { QuantitySheet } from '../../src/components/quantity-sheet';
-import { Button, Card, ErrorText, LinkButton, LinkRow, Screen, Text } from '../../src/components/ui';
-import { addLogs, addWater, deleteLog, getLogs, getWaterMl, listPlan, undoWater, updateLog, type EntryDraft, type LogEntry, type PlanEntry } from '../../src/lib/diet';
+import { CopyMealModal, SaveFavoriteModal } from '../src/components/meal-modals';
+import { QuantitySheet } from '../src/components/quantity-sheet';
+import { Button, Card, ErrorText, LinkButton, LinkRow, Screen, Text } from '../src/components/ui';
+import { addLogs, addWater, deleteLog, getLogs, getWaterMl, listPlan, undoWater, updateLog, type EntryDraft, type LogEntry, type PlanEntry } from '../src/lib/diet';
 import {
   MEALS,
   MEAL_LABELS,
@@ -17,14 +17,14 @@ import {
   sumMacros,
   toISODate,
   type Meal,
-} from '../../src/lib/diet-math';
-import { targetsForDate } from '../../src/lib/day-targets';
-import { tap } from '../../src/lib/haptics';
-import { WEEKDAY_LONG } from '../../src/lib/labels';
-import { formatKg } from '../../src/lib/training-math';
-import { useFocusData } from '../../src/lib/use-focus-data';
-import { useAuth } from '../../src/providers/AuthProvider';
-import { radius, spacing, useTheme } from '../../src/theme';
+} from '../src/lib/diet-math';
+import { targetsForDate } from '../src/lib/day-targets';
+import { tap } from '../src/lib/haptics';
+import { WEEKDAY_LONG } from '../src/lib/labels';
+import { formatKg } from '../src/lib/training-math';
+import { useFocusData } from '../src/lib/use-focus-data';
+import { useAuth } from '../src/providers/AuthProvider';
+import { radius, spacing, useTheme } from '../src/theme';
 
 const quantityText = (e: LogEntry) =>
   e.quantity_g != null ? `${formatKg(e.quantity_g)} g` : `${formatKg(e.servings ?? 0)} ${e.servings === 1 ? 'ración' : 'raciones'}`;
@@ -120,6 +120,7 @@ export default function Dieta() {
 
   return (
     <Screen>
+      <LinkButton title="‹ Volver" onPress={() => router.back()} />
       <Text variant="title">Dieta</Text>
 
       <View>
