@@ -85,7 +85,8 @@ Estilo «línea del día»: fondo crema (oscuro equivalente), tarjetas blancas c
 - **Navegación:** cuatro pestañas arriba de cada pantalla (`src/components/top-tabs.tsx`): **Hoy**, **Plan**, **Progreso** y **Yo**; no hay barra inferior. Entreno y Dieta ya no son pestañas: son pantallas a las que se llega desde Plan y desde Hoy (`app/entreno.tsx`, `app/dieta.tsx`).
 - **Hoy:** «Te quedan X kcal», las comidas del día en una línea vertical (hechas con el punto relleno; pendientes con «Añadir al diario» si hay plan, o «Añadir»), el entreno del día con «Empezar», y los macros. El entreno se puede colocar en cualquier punto de la línea (`src/lib/day-order.ts`; se guarda solo en el móvil).
 - **Botón «+»** (`src/components/quick-add.tsx`), en todas las pestañas: comida al diario (la que toca según la hora), agua, peso, entreno y foto.
-- **Plan:** menú con el planificador, la lista de la compra, el diario, archivos de dieta, alimentos y recetas, rutinas, historial y biblioteca.
+- **Plan** (`app/(tabs)/mi-plan.tsx`): tres secciones. **Semana**: los 7 días con la barra de kcal planificadas frente al objetivo de ese día, la rutina programada y acceso a la lista de la compra (tocar un día abre el planificador en ese día). **Rutinas**: tus rutinas, «Nueva rutina», entreno y volumen, historial y biblioteca. **Comidas**: diario, planificador, lista de la compra, archivos de dieta, alimentos y recetas.
+- **Progreso** empieza por el peso actual y su gráfica; **Yo** (el perfil) empieza por los objetivos diarios.
 - Las pantallas interiores (planificador, rutinas, progreso, perfil…) heredan colores y letra, pero aún no están rediseñadas una a una.
 
 ## Icono y pantalla de carga

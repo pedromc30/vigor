@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Button, Card, ChipSingle, ErrorText, LinkButton, Screen, Text } from '../src/components/ui';
 import { clearPlanDay, deletePlanEntry, listPlan } from '../src/lib/diet';
 import { MEALS, MEAL_LABELS, isoWeekday, sumMacros, toISODate } from '../src/lib/diet-math';
@@ -14,7 +14,9 @@ import { spacing } from '../src/theme';
 export default function Plan() {
   const router = useRouter();
   const { profile } = useAuth();
-  const [weekday, setWeekday] = useState(isoWeekday(toISODate(new Date())));
+  const { day } = useLocalSearchParams<{ day?: string }>();
+  const initial = Number(day);
+  const [weekday, setWeekday] = useState(initial >= 1 && initial <= 7 ? initial : isoWeekday(toISODate(new Date())));
   const { data, error, loading, reload } = useFocusData(listPlan);
   const [actionError, setActionError] = useState<string | null>(null);
 

@@ -214,58 +214,6 @@ export default function Progreso() {
       <ErrorText>{error ?? actionError}</ErrorText>
       {loading ? <Text muted>Cargando…</Text> : null}
 
-      <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-        <View style={{ flex: 1 }}>
-          <Button title="Registrar peso" onPress={() => router.push('/weight')} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Button title="Fotos" variant="secondary" onPress={() => router.push('/photos')} />
-        </View>
-      </View>
-
-      <Card tone="amber">
-        <Text variant="heading">Logros</Text>
-        {(() => {
-          const pending = (data?.goals ?? []).filter((g) => !g.achieved_at).length;
-          const last = data?.achievements[0];
-          const lastName = last ? (data?.catalog.find((e) => e.id === last.exercise_id)?.name ?? '') : '';
-          return (
-            <>
-              <Text muted>
-                {pending === 0 ? 'Sin objetivos pendientes' : pending === 1 ? '1 objetivo pendiente' : `${pending} objetivos pendientes`}
-              </Text>
-              {last ? (
-                <Text variant="caption" muted>
-                  Último: {achievementTitle(last.kind)} · {lastName ? `${lastName} · ` : ''}
-                  {achievementDetail(last)} ({short(last.achieved_at.slice(0, 10))})
-                </Text>
-              ) : (
-                <Text variant="caption" muted>
-                  Tus récords y objetivos conseguidos aparecerán aquí.
-                </Text>
-              )}
-            </>
-          );
-        })()}
-        <Button title="Ver logros y objetivos" variant="secondary" onPress={() => router.push('/achievements')} />
-      </Card>
-
-      {adjustment && adjustment.status !== 'cooldown' ? (
-        <Card>
-          <Text variant="heading">Ajuste semanal</Text>
-          <Text>{adjustment.message}</Text>
-          {adjustment.status === 'suggest' ? (
-            <>
-              <Text variant="caption" muted>
-                Orientativo: no sustituye a un dietista-nutricionista ni a un médico. Tú decides. Si aceptas, la proteína y la grasa se mantienen y los carbohidratos absorben el cambio.
-              </Text>
-              <Button title={`Aplicar ${adjustment.deltaKcal > 0 ? '+' : '−'}${Math.abs(adjustment.deltaKcal)} kcal`} onPress={() => void decide(true)} loading={applying} />
-              <Button title="Ahora no" variant="ghost" onPress={() => void decide(false)} disabled={applying} />
-            </>
-          ) : null}
-        </Card>
-      ) : null}
-
       <Card>
         <Text variant="caption" muted>
           Peso actual
@@ -335,6 +283,58 @@ export default function Progreso() {
         ) : (
           <Text muted>No hay pesajes en este periodo.</Text>
         )}
+      </Card>
+
+      <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+        <View style={{ flex: 1 }}>
+          <Button title="Registrar peso" onPress={() => router.push('/weight')} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Button title="Fotos" variant="secondary" onPress={() => router.push('/photos')} />
+        </View>
+      </View>
+
+      {adjustment && adjustment.status !== 'cooldown' ? (
+        <Card>
+          <Text variant="heading">Ajuste semanal</Text>
+          <Text>{adjustment.message}</Text>
+          {adjustment.status === 'suggest' ? (
+            <>
+              <Text variant="caption" muted>
+                Orientativo: no sustituye a un dietista-nutricionista ni a un médico. Tú decides. Si aceptas, la proteína y la grasa se mantienen y los carbohidratos absorben el cambio.
+              </Text>
+              <Button title={`Aplicar ${adjustment.deltaKcal > 0 ? '+' : '−'}${Math.abs(adjustment.deltaKcal)} kcal`} onPress={() => void decide(true)} loading={applying} />
+              <Button title="Ahora no" variant="ghost" onPress={() => void decide(false)} disabled={applying} />
+            </>
+          ) : null}
+        </Card>
+      ) : null}
+
+      <Card tone="amber">
+        <Text variant="heading">Logros</Text>
+        {(() => {
+          const pending = (data?.goals ?? []).filter((g) => !g.achieved_at).length;
+          const last = data?.achievements[0];
+          const lastName = last ? (data?.catalog.find((e) => e.id === last.exercise_id)?.name ?? '') : '';
+          return (
+            <>
+              <Text muted>
+                {pending === 0 ? 'Sin objetivos pendientes' : pending === 1 ? '1 objetivo pendiente' : `${pending} objetivos pendientes`}
+              </Text>
+              {last ? (
+                <Text variant="caption" muted>
+                  Último: {achievementTitle(last.kind)} · {lastName ? `${lastName} · ` : ''}
+                  {achievementDetail(last)} ({short(last.achieved_at.slice(0, 10))})
+                </Text>
+              ) : (
+                <Text variant="caption" muted>
+                  Tus récords y objetivos conseguidos aparecerán aquí.
+                </Text>
+              )}
+            </>
+          );
+        })()}
+        <Button title="Ver logros y objetivos" variant="secondary" onPress={() => router.push('/achievements')} />
       </Card>
 
       <Card>
