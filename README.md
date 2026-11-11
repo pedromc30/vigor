@@ -80,7 +80,13 @@ App móvil (Expo + React Native + TypeScript, backend Supabase) que combina entr
 
 ## Diseño
 
-Estilo de «baldosas suaves»: fondo gris azulado, tarjetas blancas redondeadas, acento índigo y un tono pastel por zona (Entreno azul, Dieta menta, Progreso ámbar), con modo oscuro equivalente. Tipografía Figtree (cargada con `expo-font`; si falla, se usa la del sistema). Los colores y radios están en `src/theme/index.ts` y los componentes comunes (`Card` con `tone`, `Button`, `LinkRow`, chips…) en `src/components/ui.tsx`. Las fuentes nuevas no se han probado en un Android real.
+Estilo «línea del día»: fondo crema (oscuro equivalente), tarjetas blancas con borde fino, tinta casi negra y un único acento terracota. Títulos y cifras en **Barlow Condensed** (mayúsculas) y textos en **Manrope**, cargadas con `expo-font` (si falla, se usa la fuente del sistema). Los colores y radios están en `src/theme/index.ts` y los componentes comunes en `src/components/ui.tsx`. Las fuentes nuevas no se han probado en un Android real.
+
+- **Navegación:** cuatro pestañas arriba de cada pantalla (`src/components/top-tabs.tsx`): **Hoy**, **Plan**, **Progreso** y **Yo**; no hay barra inferior. Entreno y Dieta ya no son pestañas: son pantallas a las que se llega desde Plan y desde Hoy (`app/entreno.tsx`, `app/dieta.tsx`).
+- **Hoy:** «Te quedan X kcal», las comidas del día en una línea vertical (hechas con el punto relleno; pendientes con «Añadir al diario» si hay plan, o «Añadir»), el entreno del día con «Empezar», y los macros. El entreno se puede colocar en cualquier punto de la línea (`src/lib/day-order.ts`; se guarda solo en el móvil).
+- **Botón «+»** (`src/components/quick-add.tsx`), en todas las pestañas: comida al diario (la que toca según la hora), agua, peso, entreno y foto.
+- **Plan:** menú con el planificador, la lista de la compra, el diario, archivos de dieta, alimentos y recetas, rutinas, historial y biblioteca.
+- Las pantallas interiores (planificador, rutinas, progreso, perfil…) heredan colores y letra, pero aún no están rediseñadas una a una.
 
 ## Notas de dependencias
 
