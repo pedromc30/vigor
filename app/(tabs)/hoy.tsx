@@ -1,20 +1,21 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { ActionSheet } from '../../src/components/action-sheet';
 import { TopTabs } from '../../src/components/top-tabs';
 import { ErrorText, LinkButton, Screen, Text } from '../../src/components/ui';
 import { targetsForWeekday } from '../../src/lib/day-targets';
 import { addLogs, addWater, getLogs, getWaterMl, listPlan, type EntryDraft, type PlanEntry } from '../../src/lib/diet';
-import { MEALS, MEAL_LABELS, addDays, formatMl, isoWeekday, sumMacros, toISODate, type Meal } from '../../src/lib/diet-math';
+import { MEALS, MEAL_LABELS, addDays, formatMl, isoWeekday, sumMacros, toISODate } from '../../src/lib/diet-math';
+import { DEFAULT_TRAINING_SLOT, TRAINING_SLOTS, TRAINING_SLOT_KEY, dayEvents, isTrainingSlot, slotLabel, type TrainingSlot } from '../../src/lib/day-order';
 import { tap } from '../../src/lib/haptics';
+import { loadPref, savePref } from '../../src/lib/local-prefs';
 import { getKcalRows, getSessionDates } from '../../src/lib/progress';
 import { computeStreak, kcalByDay } from '../../src/lib/progress-math';
 import { getActiveSession, getRoutine, listRoutines, planForDay, startSession } from '../../src/lib/training';
 import { useFocusData } from '../../src/lib/use-focus-data';
 import { useAuth } from '../../src/providers/AuthProvider';
 import { radius, spacing, useTheme } from '../../src/theme';
-
-type EventItem = { kind: 'meal'; meal: Meal } | { kind: 'training' };
 
 const draftOf = (p: PlanEntry): EntryDraft => ({
   meal: p.meal,
@@ -28,6 +29,16 @@ const draftOf = (p: PlanEntry): EntryDraft => ({
   carbs_g: p.carbs_g,
   fat_g: p.fat_g,
 });
+
+/** Contenedor de una entrada: pulsable solo si lleva acción (un botón no puede contener otros botones). */
+function Wrapper({ onPress, children }: { onPress?: () => void; children: React.ReactNode }) {
+  if (!onPress) return <View style={{ marginBottom: spacing.lg }}>{children}</View>;
+  return (
+    <Pressable accessibilityRole="button" onPress={onPress} style={{ marginBottom: spacing.lg }}>
+      {children}
+    </Pressable>
+  );
+}
 
 /** Una entrada de la línea del día: punto (relleno si está hecha), título y cifra a la derecha. */
 function Event({
@@ -47,7 +58,7 @@ function Event({
 }) {
   const { colors } = useTheme();
   return (
-    <Pressable accessibilityRole={onPress ? 'button' : undefined} onPress={onPress} disabled={!onPress} style={{ marginBottom: spacing.lg }}>
+    <Wrapper onPress={onPress}>
       <View
         style={{
           position: 'absolute',
@@ -77,7 +88,7 @@ function Event({
         </Text>
       ) : null}
       {children}
-    </Pressable>
+    </Wrapper>
   );
 }
 
@@ -117,6 +128,11 @@ export default function Hoy() {
     ]);
     return { logs, water, routines, active, kcalRows, sessionDates, plan };
   });
+  const [slot, setSlot] = useState<TrainingSlot>(DEFAULT_TRAINING_SLOT);
+  const [moving, setMoving] = useState(false);
+  useEffect(() => {
+    void loadPref<unknown>(TRAINING_SLOT_KEY, DEFAULT_TRAINING_SLOT).then((v) => setSlot(isTrainingSlot(v) ? v : DEFAULT_TRAINING_SLOT));
+  }, []);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -182,10 +198,8 @@ export default function Hoy() {
       tap();
     }, 'No se pudo registrar el agua.');
 
-  // Línea del día: las comidas en su orden y el entreno entre la merienda y la cena
-  const meals = MEALS.map((meal) => ({ kind: 'meal', meal }) as EventItem);
-  const at = meals.findIndex((e) => e.kind === 'meal' && e.meal === 'cena');
-  const events: EventItem[] = [...meals.slice(0, at), { kind: 'training' }, ...meals.slice(at)];
+  // Línea del día: las comidas en su orden y el entreno donde lo haya puesto el usuario
+  const events = dayEvents(slot);
 
   const mealsDone = MEALS.filter((m) => logs.some((l) => l.meal === m)).length;
   const date = new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -256,6 +270,7 @@ export default function Hoy() {
                 ) : !doneToday ? (
                   <Chip dark title="Ver rutinas" onPress={() => router.push('/entreno')} />
                 ) : null}
+                <LinkButton title={`Mover · ${slotLabel(slot).toLowerCase()}`} onPress={() => setMoving(true)} />
               </Event>
             );
           }
@@ -311,6 +326,18 @@ export default function Hoy() {
         <LinkButton title="+ 250 ml de agua" onPress={() => void drink()} />
       </View>
       <View style={{ height: 70 }} />
+      <ActionSheet
+        visible={moving}
+        title="¿Cuándo entrenas?"
+        onClose={() => setMoving(false)}
+        actions={TRAINING_SLOTS.map((s) => ({
+          label: `${slotLabel(s)}${s === slot ? ' ✓' : ''}`,
+          onPress: () => {
+            setSlot(s);
+            void savePref(TRAINING_SLOT_KEY, s);
+          },
+        }))}
+      />
     </Screen>
   );
 }
