@@ -20,10 +20,11 @@ import {
   type Table,
 } from './export-datasets';
 import { selectAll } from './progress';
+import { buildXlsx } from './xlsx-writer';
 import { supabase } from './supabase';
 
 export const DATASETS = [
-  { key: 'resumen_dias', label: 'Resumen por días (fechas arriba)', hint: 'Una columna por día y una fila por dato: calorías, macros, agua, peso, perímetros, entreno y volumen. Crece hacia abajo.' },
+  { key: 'resumen_dias', label: 'Resumen por días (fechas arriba)', hint: 'Una columna por día y una fila por dato: calorías, macros, agua, peso, perímetros, entreno y volumen. Se descarga como archivo de Excel (.xlsx) con los colores de la app.', xlsx: true },
   { key: 'perfil', label: 'Perfil y objetivos', hint: 'Tus datos, objetivos diarios y el consentimiento.' },
   { key: 'entrenos', label: 'Entrenos', hint: 'Una fila por serie: fecha, ejercicio, peso, repeticiones y RPE.' },
   { key: 'objetivos', label: 'Objetivos por ejercicio', hint: 'Tus objetivos de peso y repeticiones, y cuándo los conseguiste.' },
@@ -99,6 +100,33 @@ export async function loadTable(key: DatasetKey): Promise<Table> {
     case 'fotos':
       return photosTable(await all('progress_photos', 'taken_on, storage_path, note'));
   }
+}
+
+const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+/** Guarda la tabla como archivo de Excel (.xlsx, con los colores de la app) y abre «compartir» (móvil) o lo descarga (web). */
+export async function saveAndShareXlsx(table: Table, sheet: string): Promise<'shared' | 'downloaded'> {
+  const name = `vigor-${table.filename}-${new Date().toISOString().slice(0, 10)}.xlsx`;
+  const bytes = buildXlsx({ sheet, headers: table.headers, rows: table.rows });
+
+  if (Platform.OS === 'web') {
+    const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: XLSX_MIME }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    return 'downloaded';
+  }
+
+  const file = new File(Paths.cache, name);
+  file.create({ overwrite: true });
+  file.write(bytes);
+  if (!(await Sharing.isAvailableAsync())) throw new Error('Este dispositivo no permite compartir archivos.');
+  await Sharing.shareAsync(file.uri, { mimeType: XLSX_MIME, UTI: 'org.openxmlformats.spreadsheetml.sheet', dialogTitle: 'Exportar datos de Vigor' });
+  return 'shared';
 }
 
 /** Guarda el CSV y abre «compartir» (móvil) o lo descarga (web). */

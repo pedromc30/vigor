@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { Button, Card, ChipSingle, ErrorText, Screen, Text } from '../src/components/ui';
 import { CSV_EXCEL_ES, CSV_STANDARD } from '../src/lib/csv';
-import { DATASETS, loadTable, saveAndShare, type DatasetKey } from '../src/lib/export';
+import { DATASETS, loadTable, saveAndShare, saveAndShareXlsx, type DatasetKey } from '../src/lib/export';
 import { offline } from '../src/lib/supabase';
 import { spacing } from '../src/theme';
 
@@ -27,7 +27,8 @@ export default function ExportScreen() {
         setMessage('No hay datos de este tipo para exportar.');
         return;
       }
-      const how = await saveAndShare(table, format === 'excel' ? CSV_EXCEL_ES : CSV_STANDARD);
+      const isXlsx = DATASETS.find((d) => d.key === key && 'xlsx' in d);
+      const how = isXlsx ? await saveAndShareXlsx(table, 'Resumen por días') : await saveAndShare(table, format === 'excel' ? CSV_EXCEL_ES : CSV_STANDARD);
       setMessage(how === 'downloaded' ? `Archivo descargado (${table.rows.length} filas).` : `Exportadas ${table.rows.length} filas.`);
     } catch (e) {
       const m = e instanceof Error ? e.message : '';

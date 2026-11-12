@@ -121,7 +121,7 @@ Una capa entre la app y Supabase (`src/lib/offline`) hace lo siguiente:
 
 ## Exportar datos (CSV)
 
-Perfil → **Exportar datos (CSV)**: el **Resumen por días** (fechas arriba, una columna por día y una fila por dato: calorías, macros, agua, peso, perímetros, entreno, series y volumen; `dailySummaryTable` en `src/lib/export-datasets.ts`) y un archivo por tipo (perfil, entrenos, rutinas, diario, agua, medidas, alimentos, recetas, planificador e índice de fotos), en formato *Excel España* (`;` y decimales con coma) o *estándar* (`,` y punto). Lleva BOM UTF-8 y neutraliza los textos que una hoja de cálculo interpretaría como fórmula. Se descarga siempre del servidor (hace falta conexión) tras enviar lo pendiente. Las fotos se guardan una a una desde su pantalla.
+Perfil → **Exportar datos (CSV)**: el **Resumen por días** (fechas arriba, una columna por día y una fila por dato: calorías, macros, agua, peso, perímetros, entreno, series y volumen; `dailySummaryTable` en `src/lib/export-datasets.ts`; se descarga como archivo de Excel `.xlsx` con los colores de la app —terracota, crema y tinta— generado en `src/lib/xlsx-writer.ts`; las tipografías Barlow Condensed y Manrope solo se ven si están instaladas en el equipo) y un archivo por tipo (perfil, entrenos, rutinas, diario, agua, medidas, alimentos, recetas, planificador e índice de fotos), en formato *Excel España* (`;` y decimales con coma) o *estándar* (`,` y punto). Lleva BOM UTF-8 y neutraliza los textos que una hoja de cálculo interpretaría como fórmula. Se descarga siempre del servidor (hace falta conexión) tras enviar lo pendiente. Las fotos se guardan una a una desde su pantalla.
 
 ## RGPD
 
