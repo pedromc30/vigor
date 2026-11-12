@@ -181,7 +181,7 @@ export function Button({
         opacity: inactive ? 0.4 : pressed ? 0.75 : 1,
       })}
     >
-      {loading ? <ActivityIndicator color={fg} /> : <Text variant="label" style={{ color: fg, fontSize: 16, fontWeight: '700' }}>{title}</Text>}
+      {loading ? <ActivityIndicator color={fg} /> : <Text variant="label" style={{ color: fg, fontSize: 16, fontWeight: '700', textAlign: 'center' }}>{title}</Text>}
     </Pressable>
   );
 }

@@ -59,36 +59,42 @@ export function RestBar({
         left: spacing.lg,
         right: spacing.lg,
         bottom: insets.bottom + spacing.md,
-        backgroundColor: colors.surface,
-        borderColor: colors.border,
-        borderWidth: 1,
+        backgroundColor: colors.ink,
         borderRadius: radius.lg,
-        padding: spacing.md,
-        gap: spacing.sm,
-        elevation: 6,
+        padding: spacing.lg,
+        gap: spacing.md,
+        elevation: 8,
         shadowColor: '#000',
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
-        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 12,
+        shadowOffset: { width: 0, height: 4 },
       }}
       accessibilityLiveRegion="polite"
     >
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md }}>
         <View>
-          <Text variant="caption" muted>
+          <Text variant="caption" style={{ color: colors.onInk, opacity: 0.7 }}>
             Descanso
           </Text>
-          <Text variant="title" style={{ fontVariant: ['tabular-nums'] }}>
+          <Text variant="title" style={{ color: colors.onInk, fontSize: 48, lineHeight: 46, fontVariant: ['tabular-nums'] }}>
             {formatClock(remaining)}
           </Text>
         </View>
-        <View style={{ flexDirection: 'row', gap: spacing.lg }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
           <TimerButton title="−15 s" onPress={() => adjust(-15)} />
           <TimerButton title="+15 s" onPress={() => adjust(15)} />
-          <TimerButton title="Saltar" onPress={() => onChange(null)} />
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => onChange(null)}
+            style={{ minHeight: 40, paddingHorizontal: 18, borderRadius: 999, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Text variant="label" style={{ color: colors.onPrimary, fontWeight: '700' }}>
+              Saltar
+            </Text>
+          </Pressable>
         </View>
       </View>
-      <View style={{ height: 4, borderRadius: 2, backgroundColor: colors.surfaceAlt }}>
+      <View style={{ height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.18)' }}>
         <View style={{ height: 4, borderRadius: 2, backgroundColor: colors.primary, width: `${progress * 100}%` }} />
       </View>
     </View>
@@ -99,7 +105,7 @@ function TimerButton({ title, onPress }: { title: string; onPress: () => void })
   const { colors } = useTheme();
   return (
     <Pressable accessibilityRole="button" onPress={onPress} hitSlop={8} style={{ minHeight: 40, justifyContent: 'center' }}>
-      <Text variant="label" style={{ color: colors.primary }}>
+      <Text variant="label" style={{ color: colors.onInk, opacity: 0.8 }}>
         {title}
       </Text>
     </Pressable>

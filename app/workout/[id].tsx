@@ -54,7 +54,7 @@ import {
 import { parseDecimal } from '../../src/lib/validation';
 import { success, tap } from '../../src/lib/haptics';
 import { useAuth } from '../../src/providers/AuthProvider';
-import { fontFamily, radius, spacing, useTheme } from '../../src/theme';
+import { fontFamily, radius, spacing, useTheme, DISPLAY_FONT } from '../../src/theme';
 
 interface Row {
   /** Identidad local de la fila (no cambia aunque se reordene). */
@@ -729,8 +729,8 @@ function SetInput({
         backgroundColor: editable ? colors.surface : colors.surfaceAlt,
         color: colors.text,
         textAlign: 'center',
-        fontSize: 16,
-        fontFamily: fontFamily('500'),
+        fontSize: 24,
+        fontFamily: DISPLAY_FONT,
         fontVariant: ['tabular-nums'],
       }}
     />

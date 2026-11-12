@@ -87,7 +87,7 @@ Estilo «línea del día»: fondo crema (oscuro equivalente), tarjetas blancas c
 - **Botón «+»** (`src/components/quick-add.tsx`), en todas las pestañas: comida al diario (la que toca según la hora), agua, peso, entreno y foto.
 - **Plan** (`app/(tabs)/mi-plan.tsx`): tres secciones. **Semana**: los 7 días con la barra de kcal planificadas frente al objetivo de ese día, la rutina programada y acceso a la lista de la compra (tocar un día abre el planificador en ese día). **Rutinas**: tus rutinas, «Nueva rutina», entreno y volumen, historial y biblioteca. **Comidas**: diario, planificador, lista de la compra, archivos de dieta, alimentos y recetas.
 - **Progreso** empieza por el peso actual y su gráfica; **Yo** (el perfil) empieza por los objetivos diarios.
-- Las pantallas interiores (planificador, rutinas, progreso, perfil…) heredan colores y letra, pero aún no están rediseñadas una a una.
+- **Entreno en vivo:** cifras de peso y repeticiones en Barlow Condensed y el descanso en una tarjeta de tinta con la cuenta atrás grande. El resto de pantallas interiores (planificador, rutinas, historial, logros, ajustes…) heredan colores, letra y tarjetas.
 
 ## Icono y pantalla de carga
 
