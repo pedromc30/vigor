@@ -1,4 +1,4 @@
-import { dietFilesTable, achievementsTable, goalsTable, dietTable, foodsTable, metricsTable, photosTable, planTable, profileTable, recipesTable, routinesTable, waterTable, workoutsTable } from '../export-datasets';
+import { dailySummaryTable, dietFilesTable, achievementsTable, goalsTable, dietTable, foodsTable, metricsTable, photosTable, planTable, profileTable, recipesTable, routinesTable, waterTable, workoutsTable } from '../export-datasets';
 
 describe('workoutsTable', () => {
   const sessions = [
@@ -103,5 +103,54 @@ describe('otras tablas', () => {
     const e = { meal: 'comida', name: 'x', quantity_g: 1, servings: null, kcal: 1, protein_g: 1, carbs_g: 1, fat_g: 1 };
     const t = dietTable([{ ...e, log_date: '2026-10-25' }, { ...e, log_date: '2026-10-24' }]);
     expect(t.rows.map((r) => r[0])).toEqual(['2026-10-24', '2026-10-25']);
+  });
+});
+
+describe('dailySummaryTable (fechas arriba)', () => {
+  const t = dailySummaryTable({
+    diet: [
+      { log_date: '2026-11-09', kcal: 656.4, protein_g: 45, carbs_g: 81, fat_g: 15 },
+      { log_date: '2026-11-09', kcal: 368, protein_g: 22, carbs_g: 52, fat_g: 7 },
+      { log_date: '2026-11-07', kcal: 2000, protein_g: 150, carbs_g: 200, fat_g: 60 },
+    ],
+    water: [
+      { log_date: '2026-11-09', ml: 250 },
+      { log_date: '2026-11-09', ml: 500 },
+    ],
+    metrics: [{ measured_on: '2026-11-08', weight_kg: 82.2, waist_cm: null, hip_cm: null, arm_cm: 38, thigh_cm: null }],
+    sessions: [
+      { id: 's1', routine_name: 'Fuerza A', started_at: '2026-11-09T10:00:00Z' },
+      { id: 's2', routine_name: 'Fuerza B', started_at: '2026-11-09T18:00:00Z' },
+    ],
+    sets: [
+      { session_id: 's1', weight_kg: 80, reps: 8, set_type: 'normal' },
+      { session_id: 's1', weight_kg: 100, reps: 1, set_type: 'warmup' }, // no cuenta
+      { session_id: 's2', weight_kg: 60, reps: 10 },
+    ],
+  });
+  const row = (label: string) => t.rows.find((r) => r[0] === label)!;
+
+  it('las fechas van arriba, de la más antigua a la más reciente, y cada dato en su fila', () => {
+    expect(t.headers).toEqual(['dato', '2026-11-07', '2026-11-08', '2026-11-09']);
+    expect(t.rows.every((r) => r.length === t.headers.length)).toBe(true);
+    expect(t.rows.map((r) => r[0])).toEqual(['Calorías (kcal)', 'Proteína (g)', 'Hidratos (g)', 'Grasa (g)', 'Agua (ml)', 'Peso (kg)', 'Cintura (cm)', 'Cadera (cm)', 'Brazo (cm)', 'Muslo (cm)', 'Entreno', 'Series', 'Volumen (kg)']);
+  });
+  it('suma lo del mismo día y deja en blanco lo que falta', () => {
+    expect(row('Calorías (kcal)')).toEqual(['Calorías (kcal)', 2000, '', 1024]);
+    expect(row('Proteína (g)')).toEqual(['Proteína (g)', 150, '', 67]);
+    expect(row('Agua (ml)')).toEqual(['Agua (ml)', '', '', 750]);
+    expect(row('Peso (kg)')).toEqual(['Peso (kg)', '', 82.2, '']);
+    expect(row('Cintura (cm)')).toEqual(['Cintura (cm)', '', '', '']);
+    expect(row('Brazo (cm)')).toEqual(['Brazo (cm)', '', 38, '']);
+  });
+  it('entreno: rutinas del día, series sin aproximación y volumen', () => {
+    expect(row('Entreno')).toEqual(['Entreno', '', '', 'Fuerza A + Fuerza B']);
+    expect(row('Series')).toEqual(['Series', '', '', 2]);
+    expect(row('Volumen (kg)')).toEqual(['Volumen (kg)', '', '', 1240]); // 80×8 + 60×10
+  });
+  it('sin datos: solo la columna de nombres', () => {
+    const e = dailySummaryTable({ diet: [], water: [], metrics: [], sessions: [], sets: [] });
+    expect(e.headers).toEqual(['dato']);
+    expect(e.rows).toEqual([]); // la pantalla avisa de que no hay datos en vez de exportar un archivo vacío
   });
 });

@@ -4,6 +4,7 @@ import { Platform } from 'react-native';
 import { toCsv, type CsvFormat } from './csv';
 import {
   achievementsTable,
+  dailySummaryTable,
   dietFilesTable,
   dietTable,
   foodsTable,
@@ -22,6 +23,7 @@ import { selectAll } from './progress';
 import { supabase } from './supabase';
 
 export const DATASETS = [
+  { key: 'resumen_dias', label: 'Resumen por días (fechas arriba)', hint: 'Una columna por día y una fila por dato: calorías, macros, agua, peso, perímetros, entreno y volumen. Crece hacia abajo.' },
   { key: 'perfil', label: 'Perfil y objetivos', hint: 'Tus datos, objetivos diarios y el consentimiento.' },
   { key: 'entrenos', label: 'Entrenos', hint: 'Una fila por serie: fecha, ejercicio, peso, repeticiones y RPE.' },
   { key: 'objetivos', label: 'Objetivos por ejercicio', hint: 'Tus objetivos de peso y repeticiones, y cuándo los conseguiste.' },
@@ -45,6 +47,23 @@ const all = <T,>(table: string, select: string, order = 'id') =>
 /** Descarga de Supabase los datos de un conjunto (siempre del servidor, nunca de la copia del dispositivo). */
 export async function loadTable(key: DatasetKey): Promise<Table> {
   switch (key) {
+    case 'resumen_dias': {
+      const [diet, water, metrics, sessions, sets] = await Promise.all([
+        all<Parameters<typeof dailySummaryTable>[0]['diet'][number]>('meal_logs', 'log_date, kcal, protein_g, carbs_g, fat_g'),
+        all<Parameters<typeof dailySummaryTable>[0]['water'][number]>('water_logs', 'log_date, ml'),
+        all<Parameters<typeof dailySummaryTable>[0]['metrics'][number]>('body_metrics', 'measured_on, weight_kg, waist_cm, hip_cm, arm_cm, thigh_cm'),
+        all<Parameters<typeof dailySummaryTable>[0]['sessions'][number]>('workout_sessions', 'id, routine_name, started_at'),
+        all<Parameters<typeof dailySummaryTable>[0]['sets'][number]>('workout_sets', 'session_id, weight_kg, reps, set_type'),
+      ]);
+      const n = (v: unknown) => Number(v) || 0;
+      return dailySummaryTable({
+        diet: diet.map((d) => ({ ...d, kcal: n(d.kcal), protein_g: n(d.protein_g), carbs_g: n(d.carbs_g), fat_g: n(d.fat_g) })),
+        water: water.map((w) => ({ ...w, ml: n(w.ml) })),
+        metrics: metrics.map((m) => ({ ...m, weight_kg: m.weight_kg == null ? null : Number(m.weight_kg), waist_cm: m.waist_cm == null ? null : Number(m.waist_cm), hip_cm: m.hip_cm == null ? null : Number(m.hip_cm), arm_cm: m.arm_cm == null ? null : Number(m.arm_cm), thigh_cm: m.thigh_cm == null ? null : Number(m.thigh_cm) })),
+        sessions,
+        sets: sets.map((s) => ({ ...s, weight_kg: n(s.weight_kg), reps: n(s.reps) })),
+      });
+    }
     case 'perfil': {
       const { data, error } = await supabase.from('profiles').select('*').maybeSingle();
       if (error) throw new Error(error.message);

@@ -175,3 +175,90 @@ export function dietFilesTable(rows: { name: string; mime_type: string; size_byt
     rows: [...rows].sort((a, b) => a.created_at.localeCompare(b.created_at)).map((f) => [date(f.created_at), f.name, f.mime_type, f.size_bytes] as Cell[]),
   };
 }
+
+// ---------- Resumen por días (fechas arriba) ----------
+
+export interface DailySummaryInput {
+  diet: { log_date: string; kcal: number; protein_g: number; carbs_g: number; fat_g: number }[];
+  water: { log_date: string; ml: number }[];
+  metrics: { measured_on: string; weight_kg: number | null; waist_cm: number | null; hip_cm: number | null; arm_cm: number | null; thigh_cm: number | null }[];
+  sessions: { id: string; routine_name: string; started_at: string }[];
+  sets: { session_id: string; weight_kg: number; reps: number; set_type?: string }[];
+}
+
+const round = (n: number, d = 1) => Math.round(n * 10 ** d) / 10 ** d;
+
+/**
+ * Tabla «en horizontal»: una columna por día (las fechas arriba, de la más antigua a la más reciente) y una fila por dato
+ * (calorías, macros, agua, peso, perímetros, entreno, series y volumen). Crece hacia abajo al añadir datos y hacia la
+ * derecha al pasar los días. Un día sin dato en una fila queda en blanco. Las series de aproximación no cuentan.
+ */
+export function dailySummaryTable(input: DailySummaryInput): Table {
+  const days = new Map<string, Record<string, number | string>>();
+  const at = (d: string) => {
+    let v = days.get(d);
+    if (!v) days.set(d, (v = {}));
+    return v;
+  };
+  const add = (d: string, key: string, n: number) => {
+    const v = at(d);
+    v[key] = ((v[key] as number | undefined) ?? 0) + n;
+  };
+  for (const l of input.diet) {
+    add(l.log_date, 'kcal', l.kcal);
+    add(l.log_date, 'protein', l.protein_g);
+    add(l.log_date, 'carbs', l.carbs_g);
+    add(l.log_date, 'fat', l.fat_g);
+  }
+  for (const w of input.water) add(w.log_date, 'water', w.ml);
+  for (const m of input.metrics) {
+    const v = at(m.measured_on);
+    if (m.weight_kg != null) v.weight = m.weight_kg;
+    if (m.waist_cm != null) v.waist = m.waist_cm;
+    if (m.hip_cm != null) v.hip = m.hip_cm;
+    if (m.arm_cm != null) v.arm = m.arm_cm;
+    if (m.thigh_cm != null) v.thigh = m.thigh_cm;
+  }
+  const sessionDay = new Map(input.sessions.map((s) => [s.id, date(s.started_at)]));
+  for (const s of input.sessions) {
+    const d = date(s.started_at);
+    const names = new Set(String(at(d).workout ?? '').split(' + ').filter(Boolean));
+    names.add(s.routine_name);
+    at(d).workout = [...names].join(' + ');
+  }
+  for (const set of input.sets) {
+    const d = sessionDay.get(set.session_id);
+    if (!d || set.set_type === 'warmup') continue;
+    add(d, 'sets', 1);
+    add(d, 'volume', set.weight_kg * set.reps);
+  }
+
+  const dates = [...days.keys()].filter(Boolean).sort();
+  if (!dates.length) return { filename: 'resumen-por-dias', headers: ['dato'], rows: [] };
+  const row = (label: string, key: string, f: (n: number) => number = (n) => round(n)): Cell[] => [
+    label,
+    ...dates.map((d) => {
+      const v = days.get(d)?.[key];
+      return v === undefined ? '' : typeof v === 'number' ? f(v) : v;
+    }),
+  ];
+  return {
+    filename: 'resumen-por-dias',
+    headers: ['dato', ...dates],
+    rows: [
+      row('Calorías (kcal)', 'kcal', (n) => round(n, 0)),
+      row('Proteína (g)', 'protein'),
+      row('Hidratos (g)', 'carbs'),
+      row('Grasa (g)', 'fat'),
+      row('Agua (ml)', 'water', (n) => round(n, 0)),
+      row('Peso (kg)', 'weight'),
+      row('Cintura (cm)', 'waist'),
+      row('Cadera (cm)', 'hip'),
+      row('Brazo (cm)', 'arm'),
+      row('Muslo (cm)', 'thigh'),
+      row('Entreno', 'workout'),
+      row('Series', 'sets', (n) => n),
+      row('Volumen (kg)', 'volume', (n) => round(n, 0)),
+    ],
+  };
+}
