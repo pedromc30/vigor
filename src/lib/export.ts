@@ -24,7 +24,7 @@ import { buildXlsx } from './xlsx-writer';
 import { supabase } from './supabase';
 
 export const DATASETS = [
-  { key: 'resumen_dias', label: 'Resumen por días (fechas arriba)', hint: 'Una columna por día y una fila por dato: calorías, macros, agua, peso, perímetros, entreno y volumen. Se descarga como archivo de Excel (.xlsx) con los colores de la app.', xlsx: true },
+  { key: 'resumen_dias', label: 'Resumen por días', hint: 'Una columna por día y una fila por dato: calorías, macros, agua, peso, perímetros, entreno y volumen. Se descarga como archivo de Excel (.xlsx) con los colores de la app.', xlsx: true },
   { key: 'perfil', label: 'Perfil y objetivos', hint: 'Tus datos, objetivos diarios y el consentimiento.' },
   { key: 'entrenos', label: 'Entrenos', hint: 'Una fila por serie: fecha, ejercicio, peso, repeticiones y RPE.' },
   { key: 'objetivos', label: 'Objetivos por ejercicio', hint: 'Tus objetivos de peso y repeticiones, y cuándo los conseguiste.' },
