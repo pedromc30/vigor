@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
+import { ActionSheet } from '../src/components/action-sheet';
 import { Button, Card, ChipSingle, ErrorText, Screen, Text } from '../src/components/ui';
 import { CSV_EXCEL_ES, CSV_STANDARD } from '../src/lib/csv';
 import { DATASETS, loadExcelSheets, loadTable, saveAndShare, saveAndShareXlsx, type DatasetKey, type ExcelExport } from '../src/lib/export';
@@ -10,6 +11,7 @@ export default function ExportScreen() {
   const router = useRouter();
   const [format, setFormat] = useState<'excel' | 'standard'>('excel');
   const [busy, setBusy] = useState<DatasetKey | ExcelExport | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -65,14 +67,23 @@ export default function ExportScreen() {
       <Text muted>Descarga tus datos en Excel o en CSV. También sirve para llevártelos a otra aplicación.</Text>
 
       <Card>
-        <Text variant="heading">Excel</Text>
+        <Text variant="heading">Exportar datos</Text>
         <Text variant="caption" muted>
-          Una columna por día (las fechas arriba) y una fila por dato, con los colores de la app. Si eliges ambos, va en un solo archivo con dos hojas.
+          Archivo de Excel con una columna por día (las fechas arriba) y una fila por dato, con los colores de la app. Elige si quieres la dieta, los entrenos o ambos (un solo archivo con dos hojas).
         </Text>
-        <Button title="Exportar dieta" onPress={() => void runExcel('dieta')} loading={busy === 'dieta'} disabled={busy !== null && busy !== 'dieta'} />
-        <Button title="Exportar entrenos" onPress={() => void runExcel('entrenos')} loading={busy === 'entrenos'} disabled={busy !== null && busy !== 'entrenos'} />
-        <Button title="Exportar dieta y entrenos" variant="secondary" onPress={() => void runExcel('ambos')} loading={busy === 'ambos'} disabled={busy !== null && busy !== 'ambos'} />
+        <Button title="Exportar datos" onPress={() => setSheetOpen(true)} loading={busy === 'dieta' || busy === 'entrenos' || busy === 'ambos'} disabled={busy !== null} />
       </Card>
+
+      <ActionSheet
+        visible={sheetOpen}
+        title="¿Qué quieres exportar?"
+        onClose={() => setSheetOpen(false)}
+        actions={[
+          { label: 'Exportar dieta', icon: 'nutrition-outline', onPress: () => void runExcel('dieta') },
+          { label: 'Exportar entrenos', icon: 'barbell-outline', onPress: () => void runExcel('entrenos') },
+          { label: 'Exportar dieta y entrenos', icon: 'documents-outline', onPress: () => void runExcel('ambos') },
+        ]}
+      />
 
       <Text variant="heading">Otros datos en CSV</Text>
 
