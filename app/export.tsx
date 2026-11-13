@@ -68,9 +68,6 @@ export default function ExportScreen() {
 
       <Card>
         <Text variant="heading">Exportar datos</Text>
-        <Text variant="caption" muted>
-          Archivo de Excel con una columna por día (las fechas arriba) y una fila por dato, con los colores de la app. Elige si quieres la dieta, los entrenos o ambos (un solo archivo con dos hojas).
-        </Text>
         <Button title="Exportar datos" onPress={() => setSheetOpen(true)} loading={busy === 'dieta' || busy === 'entrenos' || busy === 'ambos'} disabled={busy !== null} />
       </Card>
 
