@@ -176,89 +176,128 @@ export function dietFilesTable(rows: { name: string; mime_type: string; size_byt
   };
 }
 
-// ---------- Resumen por días (fechas arriba) ----------
-
-export interface DailySummaryInput {
-  diet: { log_date: string; kcal: number; protein_g: number; carbs_g: number; fat_g: number }[];
-  water: { log_date: string; ml: number }[];
-  metrics: { measured_on: string; weight_kg: number | null; waist_cm: number | null; hip_cm: number | null; arm_cm: number | null; thigh_cm: number | null }[];
-  sessions: { id: string; routine_name: string; started_at: string }[];
-  sets: { session_id: string; weight_kg: number; reps: number; set_type?: string }[];
-}
+// ---------- Dieta y entrenos por días (fechas arriba) ----------
 
 const round = (n: number, d = 1) => Math.round(n * 10 ** d) / 10 ** d;
+/** Número con coma decimal, para los textos de las celdas (las cifras sueltas van como número). */
+const es = (n: number) => String(round(n, 2)).replace('.', ',');
+
+/** Tabla «en horizontal»: la primera columna son los nombres de las filas y hay una columna por día, de la más antigua a la más reciente. */
+function dayGrid(filename: string, days: Map<string, Record<string, number | string>>, rows: { label: string; key: string; fmt?: (n: number) => number }[]): Table {
+  const dates = [...days.keys()].filter(Boolean).sort();
+  if (!dates.length) return { filename, headers: ['dato'], rows: [] };
+  return {
+    filename,
+    headers: ['dato', ...dates],
+    rows: rows.map(({ label, key, fmt = (n) => round(n) }) => [
+      label,
+      ...dates.map((d) => {
+        const v = days.get(d)?.[key];
+        return v === undefined ? '' : typeof v === 'number' ? fmt(v) : v;
+      }),
+    ]),
+  };
+}
+
+const dayOf = (days: Map<string, Record<string, number | string>>, d: string) => {
+  let v = days.get(d);
+  if (!v) days.set(d, (v = {}));
+  return v;
+};
+const addTo = (days: Map<string, Record<string, number | string>>, d: string, key: string, n: number) => {
+  const v = dayOf(days, d);
+  v[key] = ((v[key] as number | undefined) ?? 0) + n;
+};
+
+export interface DietByDayInput {
+  diet: { log_date: string; meal: string; kcal: number; protein_g: number; carbs_g: number; fat_g: number }[];
+  water: { log_date: string; ml: number }[];
+}
+
+const DIET_MEALS: [string, string][] = [
+  ['desayuno', 'Desayuno (kcal)'],
+  ['snacks', 'Media mañana (kcal)'],
+  ['comida', 'Comida (kcal)'],
+  ['merienda', 'Merienda (kcal)'],
+  ['cena', 'Cena (kcal)'],
+];
+
+/** Dieta por días: calorías y macros del día, calorías de cada comida y agua. Un día sin dato queda en blanco. */
+export function dietByDayTable(input: DietByDayInput): Table {
+  const days = new Map<string, Record<string, number | string>>();
+  for (const l of input.diet) {
+    addTo(days, l.log_date, 'kcal', l.kcal);
+    addTo(days, l.log_date, 'protein', l.protein_g);
+    addTo(days, l.log_date, 'carbs', l.carbs_g);
+    addTo(days, l.log_date, 'fat', l.fat_g);
+    addTo(days, l.log_date, `meal:${l.meal}`, l.kcal);
+  }
+  for (const w of input.water) addTo(days, w.log_date, 'water', w.ml);
+  return dayGrid('dieta', days, [
+    { label: 'Calorías (kcal)', key: 'kcal', fmt: (n) => round(n, 0) },
+    { label: 'Proteína (g)', key: 'protein' },
+    { label: 'Hidratos (g)', key: 'carbs' },
+    { label: 'Grasa (g)', key: 'fat' },
+    ...DIET_MEALS.map(([k, label]) => ({ label, key: `meal:${k}`, fmt: (n: number) => round(n, 0) })),
+    { label: 'Agua (ml)', key: 'water', fmt: (n) => round(n, 0) },
+  ]);
+}
+
+export interface TrainingByDayInput {
+  sessions: SessionRow[];
+  sets: SetRow[];
+}
 
 /**
- * Tabla «en horizontal»: una columna por día (las fechas arriba, de la más antigua a la más reciente) y una fila por dato
- * (calorías, macros, agua, peso, perímetros, entreno, series y volumen). Crece hacia abajo al añadir datos y hacia la
- * derecha al pasar los días. Un día sin dato en una fila queda en blanco. Las series de aproximación no cuentan.
+ * Entrenos por días: rutina, series y volumen del día y, debajo, una fila por ejercicio con sus series («80×8 · 80×8»).
+ * Las series de aproximación no cuentan ni se listan. Si un ejercicio se hizo en dos sesiones el mismo día, van separadas por « | ».
  */
-export function dailySummaryTable(input: DailySummaryInput): Table {
+export function trainingByDayTable(input: TrainingByDayInput): Table {
   const days = new Map<string, Record<string, number | string>>();
-  const at = (d: string) => {
-    let v = days.get(d);
-    if (!v) days.set(d, (v = {}));
-    return v;
+  const sessionsById = new Map(input.sessions.map((x) => [x.id, x]));
+  for (const x of [...input.sessions].sort((a, b) => a.started_at.localeCompare(b.started_at))) {
+    const v = dayOf(days, date(x.started_at));
+    const names = String(v.workout ?? '').split(' + ').filter(Boolean);
+    if (!names.includes(x.routine_name)) names.push(x.routine_name);
+    v.workout = names.join(' + ');
+  }
+  const planIndex = (st: SetRow) => {
+    const i = (sessionsById.get(st.session_id)?.plan ?? []).findIndex((p, k) => (p.slot ?? k) === st.position);
+    return i === -1 ? Number.MAX_SAFE_INTEGER : i;
   };
-  const add = (d: string, key: string, n: number) => {
-    const v = at(d);
-    v[key] = ((v[key] as number | undefined) ?? 0) + n;
-  };
-  for (const l of input.diet) {
-    add(l.log_date, 'kcal', l.kcal);
-    add(l.log_date, 'protein', l.protein_g);
-    add(l.log_date, 'carbs', l.carbs_g);
-    add(l.log_date, 'fat', l.fat_g);
+  const sorted = [...input.sets].sort(
+    (a, b) =>
+      (sessionsById.get(a.session_id)?.started_at ?? '').localeCompare(sessionsById.get(b.session_id)?.started_at ?? '') ||
+      a.session_id.localeCompare(b.session_id) ||
+      planIndex(a) - planIndex(b) ||
+      a.position - b.position ||
+      effectiveOrder(a) - effectiveOrder(b) ||
+      a.set_index - b.set_index,
+  );
+  const exercises = new Map<string, string>(); // clave en minúsculas → nombre, en orden de aparición
+  const text = new Map<string, Map<string, string[]>>(); // `fecha|ejercicio` → sesión → series
+  for (const st of sorted) {
+    const session = sessionsById.get(st.session_id);
+    if (!session || st.set_type === 'warmup') continue;
+    const d = date(session.started_at);
+    addTo(days, d, 'sets', 1);
+    addTo(days, d, 'volume', st.weight_kg * st.reps);
+    const name = itemForPosition(session.plan ?? [], st.position)?.name ?? `Ejercicio ${st.position + 1}`;
+    const key = name.toLowerCase();
+    if (!exercises.has(key)) exercises.set(key, name);
+    const cell = `${d}|${key}`;
+    const bySession = text.get(cell) ?? new Map<string, string[]>();
+    bySession.set(st.session_id, [...(bySession.get(st.session_id) ?? []), `${es(st.weight_kg)}×${st.reps}`]);
+    text.set(cell, bySession);
   }
-  for (const w of input.water) add(w.log_date, 'water', w.ml);
-  for (const m of input.metrics) {
-    const v = at(m.measured_on);
-    if (m.weight_kg != null) v.weight = m.weight_kg;
-    if (m.waist_cm != null) v.waist = m.waist_cm;
-    if (m.hip_cm != null) v.hip = m.hip_cm;
-    if (m.arm_cm != null) v.arm = m.arm_cm;
-    if (m.thigh_cm != null) v.thigh = m.thigh_cm;
+  for (const [cell, bySession] of text) {
+    const sep = cell.indexOf('|');
+    dayOf(days, cell.slice(0, sep))[`ex:${cell.slice(sep + 1)}`] = [...bySession.values()].map((l) => l.join(' · ')).join(' | ');
   }
-  const sessionDay = new Map(input.sessions.map((s) => [s.id, date(s.started_at)]));
-  for (const s of input.sessions) {
-    const d = date(s.started_at);
-    const names = new Set(String(at(d).workout ?? '').split(' + ').filter(Boolean));
-    names.add(s.routine_name);
-    at(d).workout = [...names].join(' + ');
-  }
-  for (const set of input.sets) {
-    const d = sessionDay.get(set.session_id);
-    if (!d || set.set_type === 'warmup') continue;
-    add(d, 'sets', 1);
-    add(d, 'volume', set.weight_kg * set.reps);
-  }
-
-  const dates = [...days.keys()].filter(Boolean).sort();
-  if (!dates.length) return { filename: 'resumen-por-dias', headers: ['dato'], rows: [] };
-  const row = (label: string, key: string, f: (n: number) => number = (n) => round(n)): Cell[] => [
-    label,
-    ...dates.map((d) => {
-      const v = days.get(d)?.[key];
-      return v === undefined ? '' : typeof v === 'number' ? f(v) : v;
-    }),
-  ];
-  return {
-    filename: 'resumen-por-dias',
-    headers: ['dato', ...dates],
-    rows: [
-      row('Calorías (kcal)', 'kcal', (n) => round(n, 0)),
-      row('Proteína (g)', 'protein'),
-      row('Hidratos (g)', 'carbs'),
-      row('Grasa (g)', 'fat'),
-      row('Agua (ml)', 'water', (n) => round(n, 0)),
-      row('Peso (kg)', 'weight'),
-      row('Cintura (cm)', 'waist'),
-      row('Cadera (cm)', 'hip'),
-      row('Brazo (cm)', 'arm'),
-      row('Muslo (cm)', 'thigh'),
-      row('Entreno', 'workout'),
-      row('Series', 'sets', (n) => n),
-      row('Volumen (kg)', 'volume', (n) => round(n, 0)),
-    ],
-  };
+  return dayGrid('entrenos', days, [
+    { label: 'Rutina', key: 'workout' },
+    { label: 'Series', key: 'sets', fmt: (n) => n },
+    { label: 'Volumen (kg)', key: 'volume', fmt: (n) => round(n, 0) },
+    ...[...exercises].map(([key, label]) => ({ label, key: `ex:${key}` })),
+  ]);
 }

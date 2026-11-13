@@ -2,34 +2,27 @@ import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { Button, Card, ChipSingle, ErrorText, Screen, Text } from '../src/components/ui';
 import { CSV_EXCEL_ES, CSV_STANDARD } from '../src/lib/csv';
-import { DATASETS, loadTable, saveAndShare, saveAndShareXlsx, type DatasetKey } from '../src/lib/export';
+import { DATASETS, loadExcelSheets, loadTable, saveAndShare, saveAndShareXlsx, type DatasetKey, type ExcelExport } from '../src/lib/export';
 import { offline } from '../src/lib/supabase';
 import { spacing } from '../src/theme';
 
 export default function ExportScreen() {
   const router = useRouter();
   const [format, setFormat] = useState<'excel' | 'standard'>('excel');
-  const [busy, setBusy] = useState<DatasetKey | null>(null);
+  const [busy, setBusy] = useState<DatasetKey | ExcelExport | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const run = async (key: DatasetKey) => {
+  /** Comprueba conexión y envía lo pendiente: la exportación debe reflejar todo lo que hay en tu cuenta. */
+  const guarded = async (key: DatasetKey | ExcelExport, job: () => Promise<void>) => {
     setBusy(key);
     setError(null);
     setMessage(null);
     try {
-      // La exportación debe reflejar todo lo que hay en tu cuenta: hace falta conexión y enviar antes lo pendiente.
       if (!(await offline.probe())) throw new Error('offline');
       if (offline.queue.count > 0) await offline.flush();
       if (offline.queue.count > 0) throw new Error('pending');
-      const table = await loadTable(key);
-      if (!table.rows.length) {
-        setMessage('No hay datos de este tipo para exportar.');
-        return;
-      }
-      const isXlsx = DATASETS.find((d) => d.key === key && 'xlsx' in d);
-      const how = isXlsx ? await saveAndShareXlsx(table, 'Resumen por días') : await saveAndShare(table, format === 'excel' ? CSV_EXCEL_ES : CSV_STANDARD);
-      setMessage(how === 'downloaded' ? `Archivo descargado (${table.rows.length} filas).` : `Exportadas ${table.rows.length} filas.`);
+      await job();
     } catch (e) {
       const m = e instanceof Error ? e.message : '';
       setError(
@@ -44,10 +37,44 @@ export default function ExportScreen() {
     }
   };
 
+  const runCsv = (key: DatasetKey) =>
+    guarded(key, async () => {
+      const table = await loadTable(key);
+      if (!table.rows.length) {
+        setMessage('No hay datos de este tipo para exportar.');
+        return;
+      }
+      const how = await saveAndShare(table, format === 'excel' ? CSV_EXCEL_ES : CSV_STANDARD);
+      setMessage(how === 'downloaded' ? `Archivo descargado (${table.rows.length} filas).` : `Exportadas ${table.rows.length} filas.`);
+    });
+
+  const runExcel = (kind: ExcelExport) =>
+    guarded(kind, async () => {
+      const book = await loadExcelSheets(kind);
+      if (!book) {
+        setMessage('No hay datos de este tipo para exportar.');
+        return;
+      }
+      const how = await saveAndShareXlsx(book.filename, book.sheets);
+      setMessage(how === 'downloaded' ? 'Archivo de Excel descargado.' : 'Archivo de Excel listo para compartir.');
+    });
+
   return (
     <Screen>
       <Text variant="title">Exportar datos</Text>
-      <Text muted>Descarga tus datos en CSV, un archivo por tipo. También sirve para llevártelos a otra aplicación.</Text>
+      <Text muted>Descarga tus datos en Excel o en CSV. También sirve para llevártelos a otra aplicación.</Text>
+
+      <Card>
+        <Text variant="heading">Excel</Text>
+        <Text variant="caption" muted>
+          Una columna por día (las fechas arriba) y una fila por dato, con los colores de la app. Si eliges ambos, va en un solo archivo con dos hojas.
+        </Text>
+        <Button title="Exportar dieta" onPress={() => void runExcel('dieta')} loading={busy === 'dieta'} disabled={busy !== null && busy !== 'dieta'} />
+        <Button title="Exportar entrenos" onPress={() => void runExcel('entrenos')} loading={busy === 'entrenos'} disabled={busy !== null && busy !== 'entrenos'} />
+        <Button title="Exportar dieta y entrenos" variant="secondary" onPress={() => void runExcel('ambos')} loading={busy === 'ambos'} disabled={busy !== null && busy !== 'ambos'} />
+      </Card>
+
+      <Text variant="heading">Otros datos en CSV</Text>
 
       <Text variant="label">Formato</Text>
       <ChipSingle
@@ -73,7 +100,7 @@ export default function ExportScreen() {
           <Text variant="caption" muted>
             {d.hint}
           </Text>
-          <Button title="Exportar" variant="secondary" onPress={() => void run(d.key)} loading={busy === d.key} disabled={busy !== null && busy !== d.key} />
+          <Button title="Exportar" variant="secondary" onPress={() => void runCsv(d.key)} loading={busy === d.key} disabled={busy !== null && busy !== d.key} />
         </Card>
       ))}
       <Text variant="caption" muted style={{ paddingBottom: spacing.sm }}>

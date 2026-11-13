@@ -82,7 +82,12 @@ function sheetXml(t: XlsxTable): string {
       }).join('')}</row>`;
     })
     .join('');
-  const width = (c: number) => (c === 0 ? 24 : 13);
+  // Ancho de cada columna según lo que contiene (en caracteres), con un mínimo y un máximo razonables.
+  const widths = Array.from({ length: cols }, (_, c) => {
+    const longest = Math.max(String(t.headers[c] ?? '').length, ...t.rows.map((r) => (r[c] == null ? 0 : String(r[c]).length)));
+    return Math.min(40, Math.max(c === 0 ? 18 : 11, Math.ceil(longest * 1.15) + 2));
+  });
+  const width = (c: number) => widths[c];
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
 <sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>
@@ -95,24 +100,35 @@ function sheetXml(t: XlsxTable): string {
 </worksheet>`;
 }
 
-/** Devuelve los bytes de un archivo .xlsx con una hoja. */
-export function buildXlsx(t: XlsxTable): Uint8Array {
-  const sheetName = esc(t.sheet.replace(/[:\\/?*[\]]/g, ' ').slice(0, 31) || 'Hoja1');
+const cleanSheetName = (name: string, i: number) => esc(name.replace(/[:\\/?*[\]]/g, ' ').slice(0, 31) || `Hoja${i + 1}`);
+
+/** Devuelve los bytes de un archivo .xlsx con una hoja (o con varias, si se pasa una lista). */
+export function buildXlsx(input: XlsxTable | XlsxTable[]): Uint8Array {
+  const tables = Array.isArray(input) ? input : [input];
+  const n = tables.length;
   const files: Record<string, Uint8Array> = {
     '[Content_Types].xml': strToU8(
-      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`,
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>${tables
+        .map((_, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`)
+        .join('')}<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`,
     ),
     '_rels/.rels': strToU8(
       `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`,
     ),
     'xl/workbook.xml': strToU8(
-      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="${sheetName}" sheetId="1" r:id="rId1"/></sheets></workbook>`,
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>${tables
+        .map((t, i) => `<sheet name="${cleanSheetName(t.sheet, i)}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`)
+        .join('')}</sheets></workbook>`,
     ),
     'xl/_rels/workbook.xml.rels': strToU8(
-      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`,
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${tables
+        .map((_, i) => `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`)
+        .join('')}<Relationship Id="rId${n + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`,
     ),
     'xl/styles.xml': strToU8(STYLES),
-    'xl/worksheets/sheet1.xml': strToU8(sheetXml(t)),
   };
+  tables.forEach((t, i) => {
+    files[`xl/worksheets/sheet${i + 1}.xml`] = strToU8(sheetXml(t));
+  });
   return zipSync(files);
 }

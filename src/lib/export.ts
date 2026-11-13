@@ -4,7 +4,7 @@ import { Platform } from 'react-native';
 import { toCsv, type CsvFormat } from './csv';
 import {
   achievementsTable,
-  dailySummaryTable,
+  dietByDayTable,
   dietFilesTable,
   dietTable,
   foodsTable,
@@ -16,6 +16,7 @@ import {
   recipesTable,
   routinesTable,
   waterTable,
+  trainingByDayTable,
   workoutsTable,
   type Table,
 } from './export-datasets';
@@ -24,7 +25,6 @@ import { buildXlsx } from './xlsx-writer';
 import { supabase } from './supabase';
 
 export const DATASETS = [
-  { key: 'resumen_dias', label: 'Resumen por días', hint: 'Una columna por día y una fila por dato: calorías, macros, agua, peso, perímetros, entreno y volumen. Se descarga como archivo de Excel (.xlsx) con los colores de la app.', xlsx: true },
   { key: 'perfil', label: 'Perfil y objetivos', hint: 'Tus datos, objetivos diarios y el consentimiento.' },
   { key: 'entrenos', label: 'Entrenos', hint: 'Una fila por serie: fecha, ejercicio, peso, repeticiones y RPE.' },
   { key: 'objetivos', label: 'Objetivos por ejercicio', hint: 'Tus objetivos de peso y repeticiones, y cuándo los conseguiste.' },
@@ -48,23 +48,6 @@ const all = <T,>(table: string, select: string, order = 'id') =>
 /** Descarga de Supabase los datos de un conjunto (siempre del servidor, nunca de la copia del dispositivo). */
 export async function loadTable(key: DatasetKey): Promise<Table> {
   switch (key) {
-    case 'resumen_dias': {
-      const [diet, water, metrics, sessions, sets] = await Promise.all([
-        all<Parameters<typeof dailySummaryTable>[0]['diet'][number]>('meal_logs', 'log_date, kcal, protein_g, carbs_g, fat_g'),
-        all<Parameters<typeof dailySummaryTable>[0]['water'][number]>('water_logs', 'log_date, ml'),
-        all<Parameters<typeof dailySummaryTable>[0]['metrics'][number]>('body_metrics', 'measured_on, weight_kg, waist_cm, hip_cm, arm_cm, thigh_cm'),
-        all<Parameters<typeof dailySummaryTable>[0]['sessions'][number]>('workout_sessions', 'id, routine_name, started_at'),
-        all<Parameters<typeof dailySummaryTable>[0]['sets'][number]>('workout_sets', 'session_id, weight_kg, reps, set_type'),
-      ]);
-      const n = (v: unknown) => Number(v) || 0;
-      return dailySummaryTable({
-        diet: diet.map((d) => ({ ...d, kcal: n(d.kcal), protein_g: n(d.protein_g), carbs_g: n(d.carbs_g), fat_g: n(d.fat_g) })),
-        water: water.map((w) => ({ ...w, ml: n(w.ml) })),
-        metrics: metrics.map((m) => ({ ...m, weight_kg: m.weight_kg == null ? null : Number(m.weight_kg), waist_cm: m.waist_cm == null ? null : Number(m.waist_cm), hip_cm: m.hip_cm == null ? null : Number(m.hip_cm), arm_cm: m.arm_cm == null ? null : Number(m.arm_cm), thigh_cm: m.thigh_cm == null ? null : Number(m.thigh_cm) })),
-        sessions,
-        sets: sets.map((s) => ({ ...s, weight_kg: n(s.weight_kg), reps: n(s.reps) })),
-      });
-    }
     case 'perfil': {
       const { data, error } = await supabase.from('profiles').select('*').maybeSingle();
       if (error) throw new Error(error.message);
@@ -102,12 +85,47 @@ export async function loadTable(key: DatasetKey): Promise<Table> {
   }
 }
 
+const n = (v: unknown) => Number(v) || 0;
+
+/** Dieta por días (fechas arriba), con los datos de tu cuenta. */
+export async function loadDietByDay(): Promise<Table> {
+  const [diet, water] = await Promise.all([
+    all<{ log_date: string; meal: string; kcal: number; protein_g: number; carbs_g: number; fat_g: number }>('meal_logs', 'log_date, meal, kcal, protein_g, carbs_g, fat_g'),
+    all<{ log_date: string; ml: number }>('water_logs', 'log_date, ml'),
+  ]);
+  return dietByDayTable({
+    diet: diet.map((d) => ({ ...d, kcal: n(d.kcal), protein_g: n(d.protein_g), carbs_g: n(d.carbs_g), fat_g: n(d.fat_g) })),
+    water: water.map((w) => ({ ...w, ml: n(w.ml) })),
+  });
+}
+
+/** Entrenos por días (fechas arriba), con los datos de tu cuenta. */
+export async function loadTrainingByDay(): Promise<Table> {
+  const [sessions, sets] = await Promise.all([
+    all<Parameters<typeof workoutsTable>[0][number]>('workout_sessions', 'id, routine_name, started_at, finished_at, plan'),
+    all<Parameters<typeof workoutsTable>[1][number]>('workout_sets', 'session_id, position, set_index, weight_kg, reps, rpe, target_reps, set_type, sort_order'),
+  ]);
+  return trainingByDayTable({ sessions, sets: sets.map((s) => ({ ...s, weight_kg: n(s.weight_kg), reps: n(s.reps) })) });
+}
+
+export type ExcelExport = 'dieta' | 'entrenos' | 'ambos';
+
 const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
-/** Guarda la tabla como archivo de Excel (.xlsx, con los colores de la app) y abre «compartir» (móvil) o lo descarga (web). */
-export async function saveAndShareXlsx(table: Table, sheet: string): Promise<'shared' | 'downloaded'> {
-  const name = `vigor-${table.filename}-${new Date().toISOString().slice(0, 10)}.xlsx`;
-  const bytes = buildXlsx({ sheet, headers: table.headers, rows: table.rows });
+/** Hojas de Excel de cada exportación. Devuelve null si no hay datos que exportar. */
+export async function loadExcelSheets(kind: ExcelExport): Promise<{ filename: string; sheets: { sheet: string; table: Table }[] } | null> {
+  const sheets: { sheet: string; table: Table }[] = [];
+  if (kind !== 'entrenos') sheets.push({ sheet: 'Dieta', table: await loadDietByDay() });
+  if (kind !== 'dieta') sheets.push({ sheet: 'Entreno', table: await loadTrainingByDay() });
+  const withData = sheets.filter((s) => s.table.rows.length);
+  if (!withData.length) return null;
+  return { filename: kind === 'ambos' ? 'dieta-y-entrenos' : kind, sheets: withData };
+}
+
+/** Guarda las hojas en un archivo de Excel (.xlsx, con los colores de la app) y abre «compartir» (móvil) o lo descarga (web). */
+export async function saveAndShareXlsx(filename: string, sheets: { sheet: string; table: Table }[]): Promise<'shared' | 'downloaded'> {
+  const name = `vigor-${filename}-${new Date().toISOString().slice(0, 10)}.xlsx`;
+  const bytes = buildXlsx(sheets.map(({ sheet, table }) => ({ sheet, headers: table.headers, rows: table.rows })));
 
   if (Platform.OS === 'web') {
     const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: XLSX_MIME }));
