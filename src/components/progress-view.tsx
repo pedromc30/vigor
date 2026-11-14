@@ -1,15 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { BarChart, ChartFrame, LineChart } from '../src/components/charts';
-import { Button, Card, ChipSingle, ErrorText, Screen, Text } from '../src/components/ui';
-import { PR_LABELS, achievementDetail, achievementTitle, prKindsBySession, type PRKind } from '../src/lib/achievements';
-import { ensureAchievementsBackfill, listAchievements, listGoals } from '../src/lib/achievements-data';
-import { addDays, fromISODate, toISODate } from '../src/lib/diet-math';
-import { loadPref, savePref } from '../src/lib/local-prefs';
-import { MIN_KCAL } from '../src/lib/nutrition';
-import { getExerciseSets, getKcalRows, getSessionDates, listMetrics, listTrainedExercises } from '../src/lib/progress';
-import { listExercises } from '../src/lib/training';
+import { BarChart, ChartFrame, LineChart } from './charts';
+import { Button, Card, ChipSingle, ErrorText, Text } from './ui';
+import { PR_LABELS, achievementDetail, achievementTitle, prKindsBySession, type PRKind } from '../lib/achievements';
+import { ensureAchievementsBackfill, listAchievements, listGoals } from '../lib/achievements-data';
+import { addDays, fromISODate, toISODate } from '../lib/diet-math';
+import { loadPref, savePref } from '../lib/local-prefs';
+import { MIN_KCAL } from '../lib/nutrition';
+import { getExerciseSets, getKcalRows, getSessionDates, listMetrics, listTrainedExercises } from '../lib/progress';
+import { listExercises } from '../lib/training';
 import {
   daysBetween,
   filterByRange,
@@ -23,11 +23,11 @@ import {
   type DatedValue,
   type EvolutionMetric,
   type EvolutionRange,
-} from '../src/lib/progress-math';
-import { formatKg } from '../src/lib/training-math';
-import { useFocusData } from '../src/lib/use-focus-data';
-import { useAuth } from '../src/providers/AuthProvider';
-import { spacing, useTheme } from '../src/theme';
+} from '../lib/progress-math';
+import { formatKg } from '../lib/training-math';
+import { useFocusData } from '../lib/use-focus-data';
+import { useAuth } from '../providers/AuthProvider';
+import { spacing, useTheme } from '../theme';
 
 const DECISION_KEY = 'vigor.adjustment.lastDecision';
 const short = (iso: string) => fromISODate(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
@@ -58,7 +58,11 @@ const LOAD_RANGE_OPTIONS: { key: EvolutionRange; label: string }[] = [
 const oneDecimal = (v: number) => String(Math.round(v * 10) / 10).replace('.', ',');
 const formatMetric = (m: EvolutionMetric, v: number) => (m === 'weight' || m === '1rm' ? `${oneDecimal(v)} kg` : m === 'volume' ? `${fmtNum(v)} kg` : `${fmtNum(v)} rep.`);
 
-export default function Progreso() {
+export type ProgressPart = 'strength' | 'body' | 'diet';
+
+/** Gráficas y datos de progreso. Cada sección de la app enseña la parte que le toca: fuerza (Entrenamientos), cuerpo (Perfil) o dieta (Dieta). */
+export function ProgressView({ part }: { part: ProgressPart }) {
+  const on = (...p: ProgressPart[]) => p.includes(part);
   const router = useRouter();
   const { colors } = useTheme();
   const { session, profile, saveProfile } = useAuth();
@@ -207,11 +211,12 @@ export default function Progreso() {
   const signed = (n: number, d = 1) => `${n > 0 ? '+' : n < 0 ? '−' : ''}${Math.abs(n).toFixed(d).replace('.', ',')}`;
 
   return (
-    <Screen>
-      <Text variant="title">Progreso</Text>
+    <>
       <ErrorText>{error ?? actionError}</ErrorText>
       {loading ? <Text muted>Cargando…</Text> : null}
 
+      {on('body') ? (
+        <>
       <Card>
         <Text variant="caption" muted>
           Peso actual
@@ -291,7 +296,11 @@ export default function Progreso() {
           <Button title="Fotos" variant="secondary" onPress={() => router.push('/photos')} />
         </View>
       </View>
+        </>
+      ) : null}
 
+      {on('diet') ? (
+        <>
       {adjustment && adjustment.status !== 'cooldown' ? (
         <Card>
           <Text variant="heading">Ajuste semanal</Text>
@@ -307,7 +316,11 @@ export default function Progreso() {
           ) : null}
         </Card>
       ) : null}
+        </>
+      ) : null}
 
+      {on('strength') ? (
+        <>
       <Card tone="amber">
         <Text variant="heading">Logros</Text>
         {(() => {
@@ -334,7 +347,11 @@ export default function Progreso() {
         })()}
         <Button title="Ver logros y objetivos" variant="secondary" onPress={() => router.push('/achievements')} />
       </Card>
+        </>
+      ) : null}
 
+      {on('body') ? (
+        <>
       <Card>
         <Text variant="heading">Perímetros</Text>
         {girthRows.map((g) => (
@@ -349,7 +366,11 @@ export default function Progreso() {
           El cambio es respecto a la medición anterior. Regístralas en «Registrar peso».
         </Text>
       </Card>
+        </>
+      ) : null}
 
+      {on('diet') ? (
+        <>
       <Card>
         <ChartFrame
           title="Calorías vs objetivo"
@@ -372,7 +393,11 @@ export default function Progreso() {
           />
         </ChartFrame>
       </Card>
+        </>
+      ) : null}
 
+      {on('diet', 'strength') ? (
+        <>
       <Card>
         <ChartFrame
           title="Adherencia semanal"
@@ -402,7 +427,11 @@ export default function Progreso() {
           />
         </ChartFrame>
       </Card>
+        </>
+      ) : null}
 
+      {on('strength') ? (
+        <>
       <Card>
         <Text variant="heading">Evolución de cargas</Text>
         {data && !data.exercises.length ? <Text muted>Cuando registres series en tus entrenos verás aquí la evolución de cada ejercicio.</Text> : null}
@@ -513,6 +542,9 @@ export default function Progreso() {
           )
         ) : null}
       </Card>
-    </Screen>
+        </>
+      ) : null}
+
+    </>
   );
 }
