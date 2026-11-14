@@ -26,9 +26,9 @@ export default function TabsLayout() {
         tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopColor: colors.border,
-          height: 58 + insets.bottom,
-          paddingTop: 6,
-          paddingBottom: insets.bottom + 4,
+          height: 68 + insets.bottom,
+          paddingTop: 8,
+          paddingBottom: insets.bottom + 8,
         },
         sceneStyle: { backgroundColor: colors.background },
         tabBarIcon: ({ focused, color }) => {
