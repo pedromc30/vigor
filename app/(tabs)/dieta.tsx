@@ -3,7 +3,10 @@ import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { CopyMealModal, SaveFavoriteModal } from '../../src/components/meal-modals';
 import { QuantitySheet } from '../../src/components/quantity-sheet';
-import { Button, Card, ErrorText, LinkButton, LinkRow, Screen, Text } from '../../src/components/ui';
+import { FloatingAction } from '../../src/components/floating-action';
+import { ProgressView } from '../../src/components/progress-view';
+import { WeekPlan } from '../../src/components/week-plan';
+import { Button, Card, ChipSingle, ErrorText, LinkButton, LinkRow, Screen, Text } from '../../src/components/ui';
 import { addLogs, addWater, deleteLog, getLogs, getWaterMl, listPlan, undoWater, updateLog, type EntryDraft, type LogEntry, type PlanEntry } from '../../src/lib/diet';
 import {
   MEALS,
@@ -12,6 +15,7 @@ import {
   dayLabel,
   formatMl,
   isoWeekday,
+  mealByHour,
   progress,
   rescaleEntry,
   sumMacros,
@@ -21,6 +25,7 @@ import {
 import { targetsForDate } from '../../src/lib/day-targets';
 import { tap } from '../../src/lib/haptics';
 import { WEEKDAY_LONG } from '../../src/lib/labels';
+import { listRoutines } from '../../src/lib/training';
 import { formatKg } from '../../src/lib/training-math';
 import { useFocusData } from '../../src/lib/use-focus-data';
 import { useAuth } from '../../src/providers/AuthProvider';
@@ -53,6 +58,9 @@ function MacroBar({ label, consumed, target, color, unit = 'g' }: { label: strin
   );
 }
 
+type Section = 'diario' | 'plan' | 'progreso';
+
+/** Dieta: diario de comidas, plan semanal (con lista de la compra y archivos) y progreso de la dieta. La acción principal es añadir comida. */
 export default function Dieta() {
   const router = useRouter();
   const { colors } = useTheme();
@@ -61,11 +69,12 @@ export default function Dieta() {
   const [date, setDate] = useState(today);
   const { data, error, loading, reload } = useFocusData(
     async () => {
-      const [logs, water, plan] = await Promise.all([getLogs(date), getWaterMl(date), listPlan().catch(() => [] as PlanEntry[])]);
-      return { logs, water, plan };
+      const [logs, water, plan, routines] = await Promise.all([getLogs(date), getWaterMl(date), listPlan().catch(() => [] as PlanEntry[]), listRoutines().catch(() => [])]);
+      return { logs, water, plan, routines };
     },
     [date],
   );
+  const [section, setSection] = useState<Section>('diario');
   const [actionError, setActionError] = useState<string | null>(null);
   const [editing, setEditing] = useState<LogEntry | null>(null);
   const [copyFor, setCopyFor] = useState<Meal | null>(null);
@@ -74,6 +83,8 @@ export default function Dieta() {
   const logs = data?.logs ?? [];
   // Lo planificado para el día de la semana de la fecha que se está viendo
   const weekday = isoWeekday(date);
+  const hasSchedule = (data?.routines ?? []).some((r) => r.schedule.some((d) => d > 0));
+  const trainsThatDay = (data?.routines ?? []).some((r) => r.schedule.includes(weekday));
   const planned = (data?.plan ?? []).filter((p) => p.weekday === weekday);
   const draftOf = (p: PlanEntry): EntryDraft => ({
     meal: p.meal,
@@ -119,13 +130,37 @@ export default function Dieta() {
     }, 'No se pudo registrar el agua. Comprueba tu conexión.');
 
   return (
+    <View style={{ flex: 1 }}>
     <Screen>
       <Text variant="title">Dieta</Text>
+      <ChipSingle<Section>
+        value={section}
+        onChange={(v) => setSection(v ?? 'diario')}
+        options={[
+          { key: 'diario', label: 'Diario' },
+          { key: 'plan', label: 'Plan semanal' },
+          { key: 'progreso', label: 'Progreso' },
+        ]}
+      />
 
-      <View>
-        <LinkRow title="Planificador semanal" onPress={() => router.push('/plan')} />
-      </View>
+      {section === 'plan' ? (
+        <>
+          <Text variant="caption" muted>
+            Cada barra son las kcal planificadas frente al objetivo de ese día. Toca un día para cambiar lo planificado.
+          </Text>
+          <WeekPlan />
+          <Button title="Abrir el planificador semanal" onPress={() => router.push('/plan')} />
+          <View>
+            <LinkRow title="Lista de la compra" hint="Los ingredientes de toda la semana" onPress={() => router.push('/shopping')} />
+            <LinkRow title="Archivos de dieta" hint="PDF, Excel o CSV de tu dietista" onPress={() => router.push('/diet-files')} />
+          </View>
+        </>
+      ) : null}
 
+      {section === 'progreso' ? <ProgressView part="diet" /> : null}
+
+      {section === 'diario' ? (
+      <>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <LinkButton title="◀ Anterior" onPress={() => setDate(addDays(date, -1))} />
         <Text variant="label" accessibilityLiveRegion="polite">
@@ -137,6 +172,13 @@ export default function Dieta() {
       <ErrorText>{error ?? actionError}</ErrorText>
 
       <Card tone="mint">
+        {hasSchedule ? (
+          <View style={{ alignSelf: 'flex-start', paddingVertical: 3, paddingHorizontal: 10, borderRadius: 999, backgroundColor: colors.surfaceAlt }}>
+            <Text variant="caption" style={{ fontWeight: '800' }}>
+              {trainsThatDay ? 'Día de entreno' : 'Día de descanso'}
+            </Text>
+          </View>
+        ) : null}
         <Text variant="caption" muted>
           {dayTargets.perDay ? `Calorías · objetivo del ${WEEKDAY_LONG[weekday]}` : 'Calorías'}
         </Text>
@@ -242,7 +284,7 @@ export default function Dieta() {
             ))}
             {!entries.length ? (
               <Text variant="caption" muted>
-                Sin alimentos
+                Nada registrado. Toca «Añadir a {MEAL_LABELS[meal].toLowerCase()}».
               </Text>
             ) : null}
 
@@ -259,9 +301,6 @@ export default function Dieta() {
         );
       })}
 
-      <View>
-        <LinkRow title="Archivos de dieta" onPress={() => router.push('/diet-files')} />
-      </View>
       <View style={{ flexDirection: 'row', gap: spacing.sm }}>
         <View style={{ flex: 1 }}>
           <Button title="Nuevo alimento" variant="secondary" onPress={() => router.push('/food-create')} />
@@ -270,6 +309,9 @@ export default function Dieta() {
           <Button title="Nueva receta" variant="secondary" onPress={() => router.push('/recipe-edit')} />
         </View>
       </View>
+      <View style={{ height: 72 }} />
+      </>
+      ) : null}
 
       {editing ? (
         <QuantitySheet
@@ -320,5 +362,12 @@ export default function Dieta() {
         onSaved={() => setFavFor(null)}
       />
     </Screen>
+    {section === 'diario' ? (
+      <FloatingAction
+        title="Añadir comida"
+        onPress={() => router.push({ pathname: '/food-add', params: { target: 'diary', meal: mealByHour(new Date().getHours()), date } })}
+      />
+    ) : null}
+    </View>
   );
 }
