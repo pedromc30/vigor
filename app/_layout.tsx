@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '../src/providers/AuthProvider';
 import { SyncBanner } from '../src/components/sync-banner';
+import { ToastHost } from '../src/components/toast-host';
 import { syncReminders } from '../src/lib/notifications';
 import { isSupabaseConfigured, offline } from '../src/lib/supabase';
 import { Button, Screen, Text } from '../src/components/ui';
@@ -108,6 +109,7 @@ export default function RootLayout() {
         <StatusBar style={isDark ? 'light' : 'dark'} />
         <RootStack />
         <SyncBanner />
+        <ToastHost />
       </AuthProvider>
     </SafeAreaProvider>
   );

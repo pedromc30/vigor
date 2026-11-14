@@ -6,6 +6,7 @@ import { macrosKcal } from '../src/lib/nutrition';
 import { listRoutines } from '../src/lib/training';
 import { LIMITS, parseDecimal, rangeError } from '../src/lib/validation';
 import { useAuth } from '../src/providers/AuthProvider';
+import { showToast } from '../src/lib/toast';
 
 const int = (t: string) => {
   const n = parseDecimal(t);
@@ -74,6 +75,7 @@ export default function EditTrainRest() {
     setSaveError(null);
     try {
       await saveProfile({ day_targets: perDay, target_kcal: avg.kcal, target_protein_g: avg.protein_g, target_carbs_g: avg.carbs_g, target_fat_g: avg.fat_g, targets_manual: true });
+      showToast('Objetivos guardados');
       router.back();
     } catch {
       setSaveError('No se pudo guardar. Comprueba tu conexión e inténtalo de nuevo.');

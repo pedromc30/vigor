@@ -6,6 +6,7 @@ import { WEEKDAY_LONG } from '../src/lib/labels';
 import { macrosKcal } from '../src/lib/nutrition';
 import { LIMITS, parseDecimal, rangeError } from '../src/lib/validation';
 import { Button, Card, ErrorText, Screen, Text, TextField } from '../src/components/ui';
+import { showToast } from '../src/lib/toast';
 
 const str = (n: number | null) => (n != null ? String(n) : '');
 
@@ -36,6 +37,7 @@ export default function EditDayTarget() {
     setSaveError(null);
     try {
       await saveProfile({ day_targets: next });
+      showToast('Objetivo guardado');
       router.back();
     } catch {
       setSaveError('No se pudo guardar. Comprueba tu conexión e inténtalo de nuevo.');

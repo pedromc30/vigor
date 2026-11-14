@@ -55,6 +55,7 @@ import { parseDecimal } from '../../src/lib/validation';
 import { success, tap } from '../../src/lib/haptics';
 import { useAuth } from '../../src/providers/AuthProvider';
 import { fontFamily, radius, spacing, useTheme, DISPLAY_FONT } from '../../src/theme';
+import { showToast } from '../../src/lib/toast';
 
 interface Row {
   /** Identidad local de la fila (no cambia aunque se reordene). */
@@ -424,6 +425,7 @@ export default function Workout() {
     try {
       await finishSession(session.id);
       success();
+      showToast('Entreno guardado');
       router.replace({ pathname: '/session/[id]', params: { id: session.id } });
     } catch {
       setFinishing(false);

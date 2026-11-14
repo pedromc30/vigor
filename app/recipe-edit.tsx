@@ -10,6 +10,7 @@ import { foodLabel, parsePositive } from '../src/lib/diet-entries';
 import { recipePerServing } from '../src/lib/diet-math';
 import { spacing } from '../src/theme';
 import { useAuth } from '../src/providers/AuthProvider';
+import { showToast } from '../src/lib/toast';
 
 interface Row {
   key: string;
@@ -79,6 +80,7 @@ export default function RecipeEdit() {
         notes: notes.trim(),
         items: rows.map((r, position) => ({ food_id: r.food.id, grams: parsePositive(r.grams, 20000)!, position })),
       });
+      showToast('Receta guardada');
       router.back();
     } catch {
       setError('No se pudo guardar la receta. Comprueba tu conexión.');
@@ -90,6 +92,7 @@ export default function RecipeEdit() {
     if (!id || !(await confirm('Eliminar receta', 'Las entradas ya registradas en tu diario se conservan.', 'Eliminar', true))) return;
     try {
       await deleteRecipe(id);
+      showToast('Receta eliminada');
       router.back();
     } catch {
       setError('No se pudo eliminar la receta.');

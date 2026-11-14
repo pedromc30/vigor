@@ -14,6 +14,7 @@ import {
   type DraftErrors,
 } from '../src/components/profile-form';
 import { Button, ErrorText, Screen, Text } from '../src/components/ui';
+import { showToast } from '../src/lib/toast';
 
 export default function EditProfile() {
   const router = useRouter();
@@ -45,6 +46,7 @@ export default function EditProfile() {
               target_carbs_g: plan.carbsG,
             }),
       });
+      showToast('Datos guardados');
       router.back();
     } catch {
       setSaveError('No se pudo guardar. Comprueba tu conexión e inténtalo de nuevo.');

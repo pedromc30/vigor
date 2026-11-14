@@ -12,6 +12,7 @@ import { listExercises, type Exercise } from '../src/lib/training';
 import { useAuth } from '../src/providers/AuthProvider';
 import { spacing } from '../src/theme';
 import type { GoalKind } from '../src/lib/achievements';
+import { showToast } from '../src/lib/toast';
 
 const KIND_OPTIONS: { key: GoalKind; label: string }[] = [
   { key: 'weight', label: 'Peso (carga)' },
@@ -76,6 +77,7 @@ export default function GoalEdit() {
       const input = { exercise_id: exercise.id, ...parsed.values };
       if (id) await updateGoal(id, input);
       else await createGoal(session.user.id, input);
+      showToast('Objetivo guardado');
       router.back();
     } catch {
       setError('No se pudo guardar el objetivo. Comprueba tu conexión e inténtalo de nuevo.');
@@ -88,6 +90,7 @@ export default function GoalEdit() {
     if (!(await confirm('Eliminar objetivo', 'Los logros que ya conseguiste se conservan en tu historial.', 'Eliminar', true))) return;
     try {
       await deleteGoal(id);
+      showToast('Objetivo eliminado');
       router.back();
     } catch {
       setError('No se pudo eliminar el objetivo.');

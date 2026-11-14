@@ -4,6 +4,7 @@ import { Button, ErrorText, Screen, Text, TextField } from '../src/components/ui
 import { createFood } from '../src/lib/diet';
 import { parseDecimal } from '../src/lib/validation';
 import { useAuth } from '../src/providers/AuthProvider';
+import { showToast } from '../src/lib/toast';
 
 const field = (text: string, max: number): number | null => {
   const v = parseDecimal(text);
@@ -52,6 +53,7 @@ export default function FoodCreate() {
         fat_100g: f,
         allergens: [],
       });
+      showToast('Alimento guardado');
       router.back();
     } catch {
       setError('No se pudo guardar el alimento. ¿Ya existe uno con ese código de barras?');

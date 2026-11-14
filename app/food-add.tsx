@@ -29,6 +29,7 @@ import { ALLERGEN_OPTIONS, WEEKDAY_LONG } from '../src/lib/labels';
 import { useFocusData } from '../src/lib/use-focus-data';
 import { useAuth } from '../src/providers/AuthProvider';
 import { spacing } from '../src/theme';
+import { showToast } from '../src/lib/toast';
 
 type Selected = FoodChoice | { kind: 'recipe'; recipe: Recipe };
 
@@ -69,6 +70,7 @@ export default function FoodAdd() {
       await save([foodDraft(meal, food, qty)]);
     }
     setSelected(null);
+    showToast(isPlan ? 'Añadido al planificador' : 'Comida añadida al diario');
     router.back();
   };
 
@@ -107,6 +109,7 @@ export default function FoodAdd() {
     setError(null);
     try {
       await save(fav.items.map((i) => ({ ...i, meal })));
+      showToast(isPlan ? 'Añadido al planificador' : 'Comida añadida al diario');
       router.back();
     } catch {
       setError('No se pudo añadir la comida favorita. Comprueba tu conexión.');

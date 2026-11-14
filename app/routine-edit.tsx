@@ -10,6 +10,7 @@ import { orderByKeys } from '../src/lib/plan';
 import { syncReminders } from '../src/lib/notifications';
 import { getRoutine, saveRoutine, type Exercise } from '../src/lib/training';
 import { spacing } from '../src/theme';
+import { showToast } from '../src/lib/toast';
 
 const REPS_MODE_OPTIONS: { key: RepsMode; label: string }[] = [
   { key: 'fixed', label: 'Repeticiones fijas' },
@@ -123,6 +124,7 @@ export default function RoutineEdit() {
       const savedId = await saveRoutine(draftToInput(draft));
       void syncReminders().catch(() => {}); // los avisos de entreno dependen de los días de tus rutinas
       // Editando: se vuelve a la vista de la rutina (que se recarga al enfocar); nueva: se sustituye el editor.
+      showToast('Rutina guardada');
       if (draft.id) router.back();
       else router.replace({ pathname: '/routine/[id]', params: { id: savedId } });
     } catch {
