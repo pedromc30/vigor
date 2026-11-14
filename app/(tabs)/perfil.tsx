@@ -5,6 +5,7 @@ import { useAuth } from '../../src/providers/AuthProvider';
 import { runDeleteAccount } from '../../src/lib/account';
 import { confirmSignOut } from '../../src/lib/offline/session';
 import { ACTIVITY_LABELS, DIET_LABELS, GOAL_LABELS, SEX_LABELS, ALLERGEN_OPTIONS, WEEKDAY_LONG } from '../../src/lib/labels';
+import { ProgressView } from '../../src/components/progress-view';
 import { MacroRow } from '../../src/components/plan-summary';
 import { FORMULA_LABELS, bmrFormula } from '../../src/lib/nutrition';
 import { Button, Card, Disclaimer, ErrorText, LinkButton, LinkRow, Screen, Text } from '../../src/components/ui';
@@ -91,6 +92,7 @@ export default function Perfil() {
           </View>
         ) : null}
         <Button title="Editar objetivos" variant="secondary" onPress={() => router.push('/edit-targets')} />
+        <Button title="Objetivos de entreno y de descanso" variant="secondary" onPress={() => router.push('/edit-train-rest')} />
         {perDay ? <LinkButton title="Quitar los objetivos por día" danger onPress={() => void removePerDay()} /> : null}
       </Card>
 
@@ -109,11 +111,13 @@ export default function Perfil() {
         <Button title="Editar datos" variant="secondary" onPress={() => router.push('/edit-profile')} />
       </Card>
 
+      <Text variant="heading">Mi cuerpo</Text>
+      <ProgressView part="body" />
+
+      <Text variant="heading">Ajustes</Text>
       <View>
-        <LinkRow title="Progreso (provisional)" onPress={() => router.push('/progreso')} />
-        <LinkRow title="Plan (provisional)" onPress={() => router.push('/mi-plan')} />
         <LinkRow title="Recordatorios" onPress={() => router.push('/reminders')} />
-        <LinkRow title="Exportar datos (CSV)" onPress={() => router.push('/export')} />
+        <LinkRow title="Exportar datos" onPress={() => router.push('/export')} />
         <LinkRow title="Privacidad y datos" onPress={() => router.push('/privacy')} />
       </View>
 

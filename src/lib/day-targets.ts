@@ -76,3 +76,10 @@ export function averageOfDays(dt: DayTargets): DayTarget {
   const avg = (k: keyof DayTarget) => Math.round(list.reduce((a, t) => a + t[k], 0) / list.length);
   return { kcal: avg('kcal'), protein_g: avg('protein_g'), carbs_g: avg('carbs_g'), fat_g: avg('fat_g') };
 }
+
+/** Objetivos de los 7 días a partir de dos: uno para los días de entreno (`trainingDays`, 1 = lunes … 7 = domingo) y otro para los de descanso. */
+export function trainRestTargets(trainingDays: number[], train: DayTarget, rest: DayTarget): DayTargets {
+  const out: DayTargets = {};
+  for (let d = 1; d <= 7; d++) out[String(d)] = { ...(trainingDays.includes(d) ? train : rest) };
+  return out;
+}

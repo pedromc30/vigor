@@ -1,4 +1,4 @@
-import { averageOfDays, cleanDayTargets, targetsForDate, targetsForWeekday } from '../day-targets';
+import { averageOfDays, cleanDayTargets, targetsForDate, targetsForWeekday, trainRestTargets } from '../day-targets';
 
 const general = { target_kcal: 2669, target_protein_g: 205, target_carbs_g: 303, target_fat_g: 65 };
 const lunes = { kcal: 2860, protein_g: 217, carbs_g: 358, fat_g: 57 };
@@ -38,5 +38,24 @@ describe('targetsForWeekday / targetsForDate', () => {
 describe('averageOfDays', () => {
   it('media de los días con objetivo', () => {
     expect(averageOfDays({ '1': lunes, '6': sabado })).toEqual({ kcal: 2600, protein_g: 209, carbs_g: 278, fat_g: 67 });
+  });
+});
+
+describe('trainRestTargets', () => {
+  const train = { kcal: 2300, protein_g: 150, carbs_g: 260, fat_g: 65 };
+  const rest = { kcal: 1900, protein_g: 150, carbs_g: 180, fat_g: 62 };
+  it('reparte el objetivo de entreno y el de descanso por los 7 días', () => {
+    const t = trainRestTargets([1, 3, 5], train, rest);
+    expect(Object.keys(t)).toHaveLength(7);
+    expect(t['1']).toEqual(train);
+    expect(t['3']).toEqual(train);
+    expect(t['2']).toEqual(rest);
+    expect(t['7']).toEqual(rest);
+  });
+  it('sin días de entreno todo es descanso, y las copias son independientes', () => {
+    const t = trainRestTargets([], train, rest);
+    expect(Object.values(t).every((x) => x.kcal === 1900)).toBe(true);
+    t['1'].kcal = 1;
+    expect(rest.kcal).toBe(1900);
   });
 });

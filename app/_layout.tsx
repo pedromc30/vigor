@@ -54,11 +54,10 @@ function RootStack() {
       </Stack.Protected>
       <Stack.Protected guard={!!session && onboarded}>
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="mi-plan" />
-        <Stack.Screen name="progreso" />
         <Stack.Screen name="edit-profile" options={{ presentation: 'modal' }} />
         <Stack.Screen name="edit-targets" options={{ presentation: 'modal' }} />
         <Stack.Screen name="edit-day-target" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="edit-train-rest" options={{ presentation: 'modal' }} />
         <Stack.Screen name="exercises" />
         <Stack.Screen name="achievements" />
         <Stack.Screen name="goal-edit" />

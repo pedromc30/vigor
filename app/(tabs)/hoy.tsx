@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ActionSheet } from '../../src/components/action-sheet';
-import { ErrorText, LinkButton, Screen, Text } from '../../src/components/ui';
+import { Button, ErrorText, LinkButton, Screen, Text } from '../../src/components/ui';
 import { targetsForWeekday } from '../../src/lib/day-targets';
 import { addLogs, addWater, getLogs, getWaterMl, listPlan, type EntryDraft, type PlanEntry } from '../../src/lib/diet';
-import { MEALS, MEAL_LABELS, addDays, formatMl, isoWeekday, sumMacros, toISODate } from '../../src/lib/diet-math';
+import { MEALS, MEAL_LABELS, addDays, formatMl, isoWeekday, mealByHour, sumMacros, toISODate } from '../../src/lib/diet-math';
 import { DEFAULT_TRAINING_SLOT, TRAINING_SLOTS, TRAINING_SLOT_KEY, dayEvents, isTrainingSlot, slotLabel, type TrainingSlot } from '../../src/lib/day-order';
 import { tap } from '../../src/lib/haptics';
 import { loadPref, savePref } from '../../src/lib/local-prefs';
@@ -229,6 +229,32 @@ export default function Hoy() {
         )}
       </View>
 
+      <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+        <View style={{ flex: 1 }}>
+          <Button
+            title="Registrar comida"
+            onPress={() => router.push({ pathname: '/food-add', params: { target: 'diary', meal: mealByHour(new Date().getHours()), date: today } })}
+          />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Button
+            title={data?.active ? 'Continuar entreno' : 'Empezar entreno'}
+            variant="secondary"
+            disabled={busy}
+            onPress={() => {
+              if (data?.active) router.push({ pathname: '/workout/[id]', params: { id: data.active.id } });
+              else if (scheduledToday.length) void startScheduled(scheduledToday[0].routine.id, scheduledToday[0].dayIndex);
+              else router.push('/entreno');
+            }}
+          />
+        </View>
+      </View>
+      {!loading && mealsDone === 0 ? (
+        <Text variant="caption" muted style={{ marginTop: -spacing.sm }}>
+          Aún no has registrado comidas hoy. Toca «Registrar comida» para añadir la primera.
+        </Text>
+      ) : null}
+
       <View style={{ gap: spacing.sm, marginTop: -spacing.md }}>
         <View style={{ flexDirection: 'row', gap: 4 }}>
           {MEALS.map((m) => (
@@ -257,7 +283,7 @@ export default function Hoy() {
                       ? scheduledToday[0].name
                       : loading
                         ? 'Cargando…'
-                        : 'Sin entreno programado hoy'
+                        : 'Hoy toca descanso'
                 }
                 done={doneToday && !active}
               >
@@ -266,7 +292,7 @@ export default function Hoy() {
                 ) : !doneToday && scheduledToday.length ? (
                   <Chip dark title="Empezar" disabled={busy} onPress={() => void startScheduled(scheduledToday[0].routine.id, scheduledToday[0].dayIndex)} />
                 ) : !doneToday ? (
-                  <Chip dark title="Ver rutinas" onPress={() => router.push('/entreno')} />
+                  <Chip dark title="Elegir rutina" onPress={() => router.push('/entreno')} />
                 ) : null}
                 <LinkButton title={`Mover · ${slotLabel(slot).toLowerCase()}`} onPress={() => setMoving(true)} />
               </Event>
@@ -282,7 +308,7 @@ export default function Hoy() {
               key={e.meal}
               title={MEAL_LABELS[e.meal]}
               value={shown.length ? String(kcal) : undefined}
-              detail={shown.length ? shown.map((x) => x.name).join(' · ') : 'Sin planificar'}
+              detail={shown.length ? shown.map((x) => x.name).join(' · ') : 'Nada registrado todavía'}
               done={done}
               onPress={done ? () => router.push('/dieta') : undefined}
             >
