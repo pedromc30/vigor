@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ActionSheet } from '../../src/components/action-sheet';
-import { TopTabs } from '../../src/components/top-tabs';
 import { ErrorText, LinkButton, Screen, Text } from '../../src/components/ui';
 import { targetsForWeekday } from '../../src/lib/day-targets';
 import { addLogs, addWater, getLogs, getWaterMl, listPlan, type EntryDraft, type PlanEntry } from '../../src/lib/diet';
@@ -211,7 +210,6 @@ export default function Hoy() {
 
   return (
     <Screen>
-      <TopTabs />
       <ErrorText>{error ?? actionError}</ErrorText>
 
       <View style={{ gap: 2 }}>

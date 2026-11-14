@@ -1,16 +1,15 @@
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { TopTabs } from '../../src/components/top-tabs';
-import { Button, ChipSingle, LinkRow, Screen, Text } from '../../src/components/ui';
-import { targetsForWeekday } from '../../src/lib/day-targets';
-import { listPlan, type PlanEntry } from '../../src/lib/diet';
-import { sumMacros } from '../../src/lib/diet-math';
-import { WEEKDAY_LONG, WEEKDAY_SHORT } from '../../src/lib/labels';
-import { listRoutines } from '../../src/lib/training';
-import { useFocusData } from '../../src/lib/use-focus-data';
-import { useAuth } from '../../src/providers/AuthProvider';
-import { radius, spacing, useTheme } from '../../src/theme';
+import { Button, ChipSingle, LinkRow, Screen, Text } from '../src/components/ui';
+import { targetsForWeekday } from '../src/lib/day-targets';
+import { listPlan, type PlanEntry } from '../src/lib/diet';
+import { sumMacros } from '../src/lib/diet-math';
+import { WEEKDAY_LONG, WEEKDAY_SHORT } from '../src/lib/labels';
+import { listRoutines } from '../src/lib/training';
+import { useFocusData } from '../src/lib/use-focus-data';
+import { useAuth } from '../src/providers/AuthProvider';
+import { radius, spacing, useTheme } from '../src/theme';
 
 type Section = 'semana' | 'rutinas' | 'comidas';
 
@@ -31,7 +30,6 @@ export default function MiPlan() {
 
   return (
     <Screen>
-      <TopTabs />
       <Text variant="title" style={{ fontSize: 46, lineHeight: 44 }}>
         Plan
       </Text>

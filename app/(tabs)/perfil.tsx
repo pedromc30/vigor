@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { TopTabs } from '../../src/components/top-tabs';
 import { useAuth } from '../../src/providers/AuthProvider';
 import { runDeleteAccount } from '../../src/lib/account';
 import { confirmSignOut } from '../../src/lib/offline/session';
@@ -53,7 +52,6 @@ export default function Perfil() {
 
   return (
     <Screen>
-      <TopTabs />
       <Text variant="title">Perfil</Text>
       <Text muted>{session?.user.email}</Text>
 
@@ -112,6 +110,8 @@ export default function Perfil() {
       </Card>
 
       <View>
+        <LinkRow title="Progreso (provisional)" onPress={() => router.push('/progreso')} />
+        <LinkRow title="Plan (provisional)" onPress={() => router.push('/mi-plan')} />
         <LinkRow title="Recordatorios" onPress={() => router.push('/reminders')} />
         <LinkRow title="Exportar datos (CSV)" onPress={() => router.push('/export')} />
         <LinkRow title="Privacidad y datos" onPress={() => router.push('/privacy')} />

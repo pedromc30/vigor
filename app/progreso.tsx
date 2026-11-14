@@ -1,16 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { TopTabs } from '../../src/components/top-tabs';
-import { BarChart, ChartFrame, LineChart } from '../../src/components/charts';
-import { Button, Card, ChipSingle, ErrorText, Screen, Text } from '../../src/components/ui';
-import { PR_LABELS, achievementDetail, achievementTitle, prKindsBySession, type PRKind } from '../../src/lib/achievements';
-import { ensureAchievementsBackfill, listAchievements, listGoals } from '../../src/lib/achievements-data';
-import { addDays, fromISODate, toISODate } from '../../src/lib/diet-math';
-import { loadPref, savePref } from '../../src/lib/local-prefs';
-import { MIN_KCAL } from '../../src/lib/nutrition';
-import { getExerciseSets, getKcalRows, getSessionDates, listMetrics, listTrainedExercises } from '../../src/lib/progress';
-import { listExercises } from '../../src/lib/training';
+import { BarChart, ChartFrame, LineChart } from '../src/components/charts';
+import { Button, Card, ChipSingle, ErrorText, Screen, Text } from '../src/components/ui';
+import { PR_LABELS, achievementDetail, achievementTitle, prKindsBySession, type PRKind } from '../src/lib/achievements';
+import { ensureAchievementsBackfill, listAchievements, listGoals } from '../src/lib/achievements-data';
+import { addDays, fromISODate, toISODate } from '../src/lib/diet-math';
+import { loadPref, savePref } from '../src/lib/local-prefs';
+import { MIN_KCAL } from '../src/lib/nutrition';
+import { getExerciseSets, getKcalRows, getSessionDates, listMetrics, listTrainedExercises } from '../src/lib/progress';
+import { listExercises } from '../src/lib/training';
 import {
   daysBetween,
   filterByRange,
@@ -24,11 +23,11 @@ import {
   type DatedValue,
   type EvolutionMetric,
   type EvolutionRange,
-} from '../../src/lib/progress-math';
-import { formatKg } from '../../src/lib/training-math';
-import { useFocusData } from '../../src/lib/use-focus-data';
-import { useAuth } from '../../src/providers/AuthProvider';
-import { spacing, useTheme } from '../../src/theme';
+} from '../src/lib/progress-math';
+import { formatKg } from '../src/lib/training-math';
+import { useFocusData } from '../src/lib/use-focus-data';
+import { useAuth } from '../src/providers/AuthProvider';
+import { spacing, useTheme } from '../src/theme';
 
 const DECISION_KEY = 'vigor.adjustment.lastDecision';
 const short = (iso: string) => fromISODate(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
@@ -209,7 +208,6 @@ export default function Progreso() {
 
   return (
     <Screen>
-      <TopTabs />
       <Text variant="title">Progreso</Text>
       <ErrorText>{error ?? actionError}</ErrorText>
       {loading ? <Text muted>Cargando…</Text> : null}

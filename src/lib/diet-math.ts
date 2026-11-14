@@ -239,3 +239,6 @@ export function formatGrams(g: number): string {
 export function formatMl(ml: number): string {
   return ml >= 1000 ? `${String(Math.round(ml / 100) / 10).replace('.', ',')} L` : `${Math.round(ml)} ml`;
 }
+
+/** Comida que toca según la hora: es la que se propone al añadir al diario. */
+export const mealByHour = (h: number): Meal => (h < 9 ? 'desayuno' : h < 12 ? 'snacks' : h < 16 ? 'comida' : h < 19 ? 'merienda' : 'cena');
