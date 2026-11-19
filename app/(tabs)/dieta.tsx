@@ -153,7 +153,6 @@ export default function Dieta() {
           <View>
             <LinkRow title="Lista de la compra" hint="Los ingredientes de toda la semana" onPress={() => router.push('/shopping')} />
             <LinkRow title="Archivos de dieta" hint="PDF, Excel o CSV de tu dietista" onPress={() => router.push('/diet-files')} />
-            <LinkRow title="Dieta desde una foto" hint="Haz una foto a tu dieta en papel y la leo" onPress={() => router.push('/diet-photo')} />
           </View>
         </>
       ) : null}

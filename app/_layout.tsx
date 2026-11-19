@@ -72,7 +72,6 @@ function RootStack() {
         <Stack.Screen name="plan" />
         <Stack.Screen name="diet-files" />
         <Stack.Screen name="diet-import" />
-        <Stack.Screen name="diet-photo" />
         <Stack.Screen name="shopping" />
         <Stack.Screen name="weight" />
         <Stack.Screen name="photos" />
