@@ -24,7 +24,7 @@ export interface ImportTargets {
   fat_g?: number;
 }
 
-export type ImportLayout = 'grid' | 'transposed' | 'list' | 'pdf' | 'none';
+export type ImportLayout = 'grid' | 'transposed' | 'list' | 'pdf' | 'photo' | 'none';
 
 export interface ParsedDiet {
   layout: ImportLayout;
@@ -355,6 +355,7 @@ export const LAYOUT_LABELS: Record<ImportLayout, string> = {
   transposed: 'Días en filas y comidas en columnas',
   list: 'Una fila por alimento',
   pdf: 'PDF: un menú por día',
+  photo: 'Foto: texto reconocido',
   none: 'Sin reconocer',
 };
 

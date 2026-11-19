@@ -60,7 +60,7 @@ export default function Privacy() {
           comidas y agua, tus medidas corporales, las fotos de progreso y los archivos de dieta que subas.
         </Text>
         <Text variant="caption" muted>
-          Cuando usas un archivo de dieta para rellenar tu planificador, el PDF, Excel o CSV se lee en tu móvil: su contenido no se envía a ningún tercero.
+          Cuando usas un archivo de dieta para rellenar tu planificador, el PDF, Excel o CSV se lee en tu móvil: su contenido no se envía a ningún tercero. Si lees tu dieta desde una foto, el texto se reconoce también en tu móvil (con el reconocimiento de texto del propio sistema): la foto no se guarda ni se envía.
         </Text>
         <Text muted>Cuenta registrada: {session?.user.email ?? '—'}</Text>
       </Section>

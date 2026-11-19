@@ -258,6 +258,6 @@ export function readPdfLines(bytes: Uint8Array): PdfLine[][] {
     const content = [...contentsRaw.matchAll(/(\d+)\s+\d+\s+R/g)].map((m) => objs.get(Number(m[1]))?.stream ?? '').join('\n');
     pages.push(toLines(textRuns(content, fonts)));
   }
-  if (!pages.some((p) => p.length)) throw new Error('No se ha encontrado texto en el PDF (puede ser un escaneo o una imagen).');
+  if (!pages.some((p) => p.length)) throw new Error('No se ha encontrado texto en el PDF (puede ser un escaneo o una imagen). Si es una foto de tu dieta, usa «Dieta desde una foto» en Dieta → Plan semanal.');
   return pages;
 }

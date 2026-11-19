@@ -9,6 +9,7 @@ import { downloadDietFile, listDietFiles, type DietFile } from '../src/lib/diet-
 import { MEAL_LABELS } from '../src/lib/diet-math';
 import { WEEKDAY_LONG } from '../src/lib/labels';
 import { parseDietPdf } from '../src/lib/diet-pdf';
+import { takePendingImport } from '../src/lib/pending-import';
 import { SpreadsheetError, readSpreadsheet } from '../src/lib/spreadsheet';
 import { success } from '../src/lib/haptics';
 import { formatKg } from '../src/lib/training-math';
@@ -21,7 +22,7 @@ export default function DietImport() {
   const router = useRouter();
   const { colors } = useTheme();
   const { session, profile, saveProfile } = useAuth();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, photo } = useLocalSearchParams<{ id?: string; photo?: string }>();
 
   const [file, setFile] = useState<DietFile | null>(null);
   const [parsed, setParsed] = useState<ParsedDiet | null>(null);
@@ -37,6 +38,16 @@ export default function DietImport() {
   useEffect(() => {
     (async () => {
       try {
+        if (photo) {
+          const fromPhoto = takePendingImport();
+          if (!fromPhoto) return setError('Se ha perdido la lectura de la foto. Vuelve atrás y hazla de nuevo.');
+          const plan = await listPlan().catch(() => []);
+          setParsed(fromPhoto);
+          setDays(new Set(daysWithEntries(fromPhoto.entries)));
+          setExisting(plan.length);
+          setApplyTargets(Object.keys(fromPhoto.targets).length > 0);
+          return;
+        }
         const f = (await listDietFiles()).find((x) => x.id === id);
         if (!f) return setError('No se encontró el archivo.');
         setFile(f);
@@ -53,7 +64,7 @@ export default function DietImport() {
         setLoading(false);
       }
     })();
-  }, [id]);
+  }, [id, photo]);
 
   const entriesByDay = useMemo(() => {
     const m = new Map<number, ParsedDiet['entries']>();
@@ -132,7 +143,7 @@ export default function DietImport() {
   return (
     <Screen>
       <Text variant="title">Usar en mi dieta</Text>
-      {file ? <Text muted>{file.name}</Text> : null}
+      {file ? <Text muted>{file.name}</Text> : photo ? <Text muted>Foto de tu dieta</Text> : null}
       <ErrorText>{error}</ErrorText>
 
       {parsed ? (
